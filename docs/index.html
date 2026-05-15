@@ -22,16 +22,21 @@
         }
         
         .container {
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
             background: white;
             border-radius: 15px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        /* Landing Page */
+        .landing {
             padding: 60px 40px;
             text-align: center;
         }
         
-        h1 {
+        .landing h1 {
             color: #333;
             font-size: 2.5em;
             margin-bottom: 20px;
@@ -41,7 +46,7 @@
             background-clip: text;
         }
         
-        .subtitle {
+        .landing .subtitle {
             color: #666;
             font-size: 1.1em;
             margin-bottom: 40px;
@@ -72,7 +77,7 @@
             line-height: 1.5;
         }
         
-        .cta-button {
+        .cta-button, button {
             display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -80,14 +85,14 @@
             border-radius: 50px;
             text-decoration: none;
             font-weight: 600;
-            margin-top: 30px;
+            margin: 10px 5px;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             border: none;
             cursor: pointer;
             font-size: 1em;
         }
         
-        .cta-button:hover {
+        .cta-button:hover, button:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
@@ -99,10 +104,191 @@
             color: #999;
             font-size: 0.9em;
         }
+        
+        /* Auth Pages */
+        .auth-page {
+            display: none;
+            padding: 50px 40px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .auth-page.active {
+            display: block;
+        }
+        
+        .auth-page h2 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group button {
+            width: 100%;
+            padding: 12px;
+            margin: 0;
+        }
+        
+        .auth-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+        }
+        
+        .auth-link a {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        /* Chat Page */
+        .chat-page {
+            display: none;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+        
+        .chat-page.active {
+            display: flex;
+        }
+        
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .chat-header h2 {
+            margin: 0;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 15px;
+            border-radius: 15px;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .message.bot .message-bubble {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 1em;
+        }
+        
+        .chat-input-area button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            padding: 0;
+            cursor: pointer;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+        
+        .chat-input-area button:hover {
+            transform: scale(1.05);
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+        
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Landing Page -->
+    <div id="landing" class="container landing active">
         <h1>🏥 Doctor Bot</h1>
         <p class="subtitle">Your AI-Powered Medical Assistant</p>
         
@@ -121,11 +307,201 @@
             </div>
         </div>
         
-        <a href="#" class="cta-button">Coming Soon</a>
+        <button onclick="showPage('login')" class="cta-button">Get Started</button>
         
         <div class="footer">
             <p>Doctor Bot - AI Healthcare Assistant | 2026</p>
         </div>
     </div>
+
+    <!-- Login Page -->
+    <div id="login" class="container auth-page">
+        <h2>Login</h2>
+        <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="loginEmail" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" required>
+            </div>
+            <div class="form-group">
+                <button type="submit">Login</button>
+            </div>
+        </form>
+        <div class="auth-link">
+            Don't have an account? <a onclick="showPage('register')">Register here</a>
+        </div>
+    </div>
+
+    <!-- Register Page -->
+    <div id="register" class="container auth-page">
+        <h2>Create Account</h2>
+        <form onsubmit="handleRegister(event)">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="registerName" required>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="registerEmail" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="registerPassword" required>
+            </div>
+            <div class="form-group">
+                <button type="submit">Register</button>
+            </div>
+        </form>
+        <div class="auth-link">
+            Already have an account? <a onclick="showPage('login')">Login here</a>
+        </div>
+    </div>
+
+    <!-- Chat Page -->
+    <div id="chat" class="container chat-page">
+        <div class="chat-header">
+            <h2>🏥 Doctor Bot Chat</h2>
+            <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type your question...">
+            <button onclick="sendMessage()">➤</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:5000'; // Change to your backend URL
+        let currentUser = null;
+        let authToken = null;
+
+        function showPage(page) {
+            document.getElementById('landing').classList.remove('active');
+            document.getElementById('login').classList.remove('active');
+            document.getElementById('register').classList.remove('active');
+            document.getElementById('chat').classList.remove('active');
+            
+            if (page === 'landing') {
+                document.getElementById('landing').classList.add('active');
+            } else if (page === 'login') {
+                document.getElementById('login').classList.add('active');
+            } else if (page === 'register') {
+                document.getElementById('register').classList.add('active');
+            } else if (page === 'chat') {
+                document.getElementById('chat').classList.add('active');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const name = document.getElementById('registerName').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                if (response.ok) {
+                    alert('Registration successful! Please login.');
+                    showPage('login');
+                } else {
+                    alert('Registration failed. Please try again.');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    authToken = data.token;
+                    showPage('chat');
+                    document.getElementById('chatMessages').innerHTML = '';
+                } else {
+                    alert('Login failed. Invalid credentials.');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+
+            // Display user message
+            addMessage(message, 'user');
+            input.value = '';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ message })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    addMessage(data.response, 'bot');
+                } else {
+                    addMessage('Sorry, there was an error processing your request.', 'bot');
+                }
+            } catch (error) {
+                addMessage('Error: Could not reach the server. Please check your connection.', 'bot');
+            }
+        }
+
+        function addMessage(text, sender) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = text;
+            
+            messageDiv.appendChild(bubble);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            authToken = null;
+            showPage('landing');
+        }
+
+        // Allow sending message with Enter key
+        document.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter' && document.getElementById('chat').classList.contains('active')) {
+                sendMessage();
+            }
+        });
+    </script>
 </body>
 </html>
