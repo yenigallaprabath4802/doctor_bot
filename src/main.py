@@ -16,6 +16,7 @@ Features:
 Offline-first design with local database.
 """
 
+import os
 import sqlite3
 import hashlib
 import json
@@ -48,10 +49,10 @@ TEMPLATE_DIR = BASE_DIR / 'templates'
 STATIC_DIR = BASE_DIR / 'static'
 
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR), static_folder=str(STATIC_DIR))
-app.secret_key = 'your_secret_key'  # Change in production
+app.secret_key = os.environ.get('SECRET_KEY', 'your_secret_key')  # Set SECRET_KEY in Render for production
 
-# MongoDB connection (optional; app can still work without it)
-MONGO_URI = 'mongodb+srv://231fa04802_db_user:DqSE99aMsPOykHss@cluster0.uhxlrp0.mongodb.net/'
+# MongoDB connection (required for cloud deployment)
+MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://231fa04802_db_user:DqSE99aMsPOykHss@cluster0.uhxlrp0.mongodb.net/')
 mongo_client = MongoClient(MONGO_URI)
 mongo_db = mongo_client['agrivoice_cloud']
 
@@ -743,5 +744,6 @@ def logout():
 
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
 

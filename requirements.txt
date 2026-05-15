@@ -7,3 +7,4 @@ pymongo
 pyttsx3
 SpeechRecognition
 requests
+gunicorn
