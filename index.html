@@ -107,7 +107,7 @@
       <p>Welcome to the Doctor Bot project. This is the published homepage for the repository.</p>
       <div class="actions">
         <a class="primary" href="README.md">Read Project Readme</a>
-        <a class="secondary" href="#">Open Deployed App</a>
+        <a id="deployedAppButton" class="secondary" href="README.md">Open Deployment Info</a>
       </div>
     </section>
     <section class="details">
@@ -125,5 +125,19 @@
       </div>
     </section>
   </div>
+  <script>
+    const DEPLOYED_APP_URL = '';
+    const deployedButton = document.getElementById('deployedAppButton');
+
+    if (DEPLOYED_APP_URL) {
+      deployedButton.href = DEPLOYED_APP_URL;
+      deployedButton.target = '_blank';
+      deployedButton.textContent = 'Open Deployed App';
+    } else {
+      deployedButton.href = 'README.md';
+      deployedButton.textContent = 'Open Deployment Info';
+      deployedButton.title = 'Deployment URL not configured';
+    }
+  </script>
 </body>
 </html>
