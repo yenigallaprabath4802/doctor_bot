@@ -106,7 +106,6 @@
       <h1>Doctor Bot</h1>
       <p>Welcome to the Doctor Bot project. This is the published homepage for the repository.</p>
       <div class="actions">
-        <a class="primary" href="README.md">Read Project Readme</a>
         <a id="deployedAppButton" class="secondary" href="README.md">Open Deployment Info</a>
       </div>
     </section>
@@ -134,9 +133,11 @@
       deployedButton.target = '_blank';
       deployedButton.textContent = 'Open Deployed App';
     } else {
-      deployedButton.href = 'README.md';
-      deployedButton.textContent = 'Open Deployment Info';
-      deployedButton.title = 'Deployment URL not configured';
+      deployedButton.removeAttribute('href');
+      deployedButton.textContent = 'Deployment URL not configured';
+      deployedButton.classList.add('disabled');
+      deployedButton.style.pointerEvents = 'none';
+      deployedButton.style.opacity = '0.6';
     }
   </script>
 </body>
