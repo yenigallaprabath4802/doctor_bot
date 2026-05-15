@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run AgriVoice AI",
+			"type": "shell",
+			"command": "python",
+			"args": [
+				"src/main.py"
+			],
+			"group": "build"
+		}
+	]
+}

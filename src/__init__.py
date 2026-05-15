@@ -1,0 +1,3 @@
+"""
+AgriVoice src module
+"""

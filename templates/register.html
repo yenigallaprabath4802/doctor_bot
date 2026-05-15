@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Register for AgriVoice AI</h2>
+<form method="post" class="login-form">
+    <label for="phone">Phone:</label>
+    <input type="text" id="phone" name="phone" required>
+
+    <label for="pin">PIN:</label>
+    <input type="password" id="pin" name="pin" required>
+
+    <label for="confirm_pin">Confirm PIN:</label>
+    <input type="password" id="confirm_pin" name="confirm_pin" required>
+
+    <label for="language">Preferred Language:</label>
+    <select id="language" name="language">
+        <option value="English">English</option>
+        <option value="Hindi">Hindi</option>
+        <option value="Telugu">Telugu</option>
+    </select>
+
+    <button type="submit">Register</button>
+</form>
+<p class="form-link">Already registered? <a href="{{ url_for('login') }}">Login here</a>.</p>
+{% endblock %}

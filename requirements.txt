@@ -1,0 +1,9 @@
+openvino
+pillow
+torch
+transformers
+flask
+pymongo
+pyttsx3
+SpeechRecognition
+requests
