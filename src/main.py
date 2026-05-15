@@ -51,7 +51,7 @@ app = Flask(__name__, template_folder=str(TEMPLATE_DIR), static_folder=str(STATI
 app.secret_key = 'your_secret_key'  # Change in production
 
 # MongoDB connection (optional; app can still work without it)
-MONGO_URI = 'mongodb://localhost:27017/'
+MONGO_URI = 'mongodb+srv://231fa04802_db_user:DqSE99aMsPOykHss@cluster0.uhxlrp0.mongodb.net/'
 mongo_client = MongoClient(MONGO_URI)
 mongo_db = mongo_client['agrivoice_cloud']
 
