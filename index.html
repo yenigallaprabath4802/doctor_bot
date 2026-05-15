@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Bot</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f7fb;
+      color: #2d3748;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 900px;
+      background: white;
+      border-radius: 24px;
+      box-shadow: 0 24px 80px rgba(31, 45, 61, 0.12);
+      overflow: hidden;
+    }
+    .hero {
+      padding: 60px 48px;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: 3rem;
+      margin-bottom: 16px;
+      color: #3b49a1;
+    }
+    .hero p {
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: #55607a;
+      max-width: 720px;
+      margin: 0 auto 32px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 16px;
+    }
+    .actions a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 180px;
+      padding: 14px 24px;
+      border-radius: 999px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .actions a.primary {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+    }
+    .actions a.secondary {
+      background: #eef2ff;
+      color: #4338ca;
+    }
+    .actions a:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 32px rgba(99, 102, 241, 0.18);
+    }
+    .details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+      padding: 32px 48px 48px;
+      background: #f8fafc;
+    }
+    .detail {
+      border-left: 4px solid #6366f1;
+      padding-left: 20px;
+    }
+    .detail h3 {
+      margin: 0 0 10px;
+      font-size: 1.1rem;
+      color: #1e293b;
+    }
+    .detail p {
+      margin: 0;
+      color: #475569;
+      line-height: 1.6;
+    }
+    @media (max-width: 640px) {
+      .hero {
+        padding: 40px 24px;
+      }
+      .details {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <section class="hero">
+      <h1>Doctor Bot</h1>
+      <p>Welcome to the Doctor Bot project. This is the published homepage for the repository.</p>
+      <div class="actions">
+        <a class="primary" href="README.md">Read Project Readme</a>
+        <a class="secondary" href="#">Open Deployed App</a>
+      </div>
+    </section>
+    <section class="details">
+      <div class="detail">
+        <h3>Project Type</h3>
+        <p>Flask web application with voice and chat support, connected to MongoDB.</p>
+      </div>
+      <div class="detail">
+        <h3>Branch</h3>
+        <p>Main branch publishing from the repository root.</p>
+      </div>
+      <div class="detail">
+        <h3>GitHub Pages</h3>
+        <p>Root publishing means the repo root is served directly instead of a docs folder.</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>
