@@ -57,18 +57,24 @@ mongo_client = MongoClient(MONGO_URI)
 mongo_db = mongo_client['agrivoice_cloud']
 
 # Dataset API base (hosted on GitHub Pages - static JSON files)
-DATASET_API_BASE = 'https://yenigallaprabath4802.github.io/apolo_api/api_data'
+DATASET_API_BASE = 'https://yenigallaprabath4802.github.io/AgriVoice_Api/api_data'
 
 KNOWN_CROPS = ['rice', 'tomato', 'wheat', 'cotton', 'maize', 'banana', 'mango', 'chili', 'sugarcane']
 
 # Dynamically try to load more crops from dataset on startup
+CACHED_PLANTS_DATA = []
+CACHED_DISEASE_DATA = []
 try:
     resp = requests.get(f'{DATASET_API_BASE}/plants_development.json', timeout=5)
     if resp.status_code == 200:
-        for item in resp.json():
+        CACHED_PLANTS_DATA = resp.json()
+        for item in CACHED_PLANTS_DATA:
             cname = item.get("crop_name", "").lower()
             if cname and cname not in KNOWN_CROPS:
                 KNOWN_CROPS.append(cname)
+    resp_d = requests.get(f'{DATASET_API_BASE}/plants_disease.json', timeout=5)
+    if resp_d.status_code == 200:
+        CACHED_DISEASE_DATA = resp_d.json()
 except Exception:
     pass
 
@@ -243,12 +249,10 @@ def extract_crop_name(message):
         clean_msg = clean_msg.replace(phrase, '').strip()
 
     if clean_msg and len(clean_msg.split()) <= 4:
-        try:
-            resp = requests.get(f"{DATASET_API_BASE}/plants/search?q={clean_msg}", timeout=1)
-            if resp.status_code == 200 and resp.json().get('found'):
-                return resp.json().get('crop_name').capitalize()
-        except Exception:
-            pass
+        for item in CACHED_PLANTS_DATA:
+            cname = item.get("crop_name", "").lower()
+            if clean_msg in cname or cname in clean_msg:
+                return item.get("crop_name").capitalize()
 
     return None
 
@@ -326,26 +330,23 @@ def local_diagnosis_logic(message, crop):
         crop_name = crop.capitalize()
 
         try:
-            response = requests.get(f"{DATASET_API_BASE}/disease", timeout=3)
-            if response.status_code == 200:
-                data = response.json()
-                for item in data:
-                    if item.get('crop_name', '').capitalize() == crop_name:
-                        issues = item.get('issues', item)
-                        for disease in issues.get('diseases', []):
-                            d_name = preprocess_text(disease.get('disease_name', ''))
-                            if d_name in normalized:
-                                return (
-                                    f"Diagnosis ({crop_name} - {disease.get('disease_name')}): "
-                                    f"{disease.get('symptoms')} Recommended control: {disease.get('control_measures')}"
-                                )
-                        for pest in issues.get('pests', []):
-                            p_name = preprocess_text(pest.get('pest_name', ''))
-                            if p_name in normalized:
-                                return (
-                                    f"Pest ({crop_name} - {pest.get('pest_name')}): "
-                                    f"{pest.get('symptoms')} Recommended control: {pest.get('control_measures')}"
-                                )
+            for item in CACHED_DISEASE_DATA:
+                if item.get('crop_name', '').capitalize() == crop_name:
+                    issues = item.get('issues', item)
+                    for disease in issues.get('diseases', []):
+                        d_name = preprocess_text(disease.get('disease_name', ''))
+                        if d_name in normalized:
+                            return (
+                                f"Diagnosis ({crop_name} - {disease.get('disease_name')}): "
+                                f"{disease.get('symptoms')} Recommended control: {disease.get('control_measures')}"
+                            )
+                    for pest in issues.get('pests', []):
+                        p_name = preprocess_text(pest.get('pest_name', ''))
+                        if p_name in normalized:
+                            return (
+                                f"Pest ({crop_name} - {pest.get('pest_name')}): "
+                                f"{pest.get('symptoms')} Recommended control: {pest.get('control_measures')}"
+                            )
         except Exception as e:
             print(f"Dataset API Error (Diagnosis): {e}")
 
@@ -371,17 +372,10 @@ def local_diagnosis_logic(message, crop):
             return diagnosis
 
     if crop:
-        try:
-            search_resp = requests.get(f"{DATASET_API_BASE}/plants/search?q={crop}", timeout=3)
-            if search_resp.status_code == 200:
-                search_data = search_resp.json()
-                if search_data.get('found'):
-                    full_name = search_data.get('full_name', crop)
-                    return (
-                        f"I recognize {full_name}, but I don't have detailed disease records for it to diagnose your issue."
-                    )
-        except Exception:
-            pass
+        for item in CACHED_PLANTS_DATA:
+            cname = item.get("crop_name", "")
+            if cname.lower() == crop.lower():
+                return f"I recognize {cname}, but I don't have detailed disease records for it to diagnose your issue."
 
         return (
             f"I do not have a precise diagnosis for {crop} from that description. "
@@ -396,19 +390,16 @@ def get_cultivation_guide(crop):
 
     # Try remote dataset API
     try:
-        response = requests.get(f"{DATASET_API_BASE}/development", timeout=3)
-        if response.status_code == 200:
-            data = response.json()
-            for item in data:
-                if item.get('crop_name', '').capitalize() == crop_name:
-                    dev = item.get('development', {})
-                    api_guide = (
-                        f"Soil: {dev.get('soil_required', 'N/A')}. "
-                        f"Watering: {dev.get('irrigation', 'N/A')}. "
-                        f"Season: {dev.get('planting_season', 'N/A')}. "
-                        f"Propagation: {dev.get('propagation_method', 'N/A')}."
-                    )
-                    return api_guide
+        for item in CACHED_PLANTS_DATA:
+            if item.get('crop_name', '').capitalize() == crop_name:
+                dev = item.get('development', {})
+                api_guide = (
+                    f"Soil: {dev.get('soil_required', 'N/A')}. "
+                    f"Watering: {dev.get('irrigation', 'N/A')}. "
+                    f"Season: {dev.get('planting_season', 'N/A')}. "
+                    f"Propagation: {dev.get('propagation_method', 'N/A')}."
+                )
+                return api_guide
     except Exception as e:
         print(f"Dataset API Error (Cultivation): {e}")
 
@@ -426,15 +417,10 @@ def get_cultivation_guide(crop):
         return result[0]
 
     # Search API fallback
-    try:
-        search_resp = requests.get(f"{DATASET_API_BASE}/plants/search?q={crop_name}", timeout=3)
-        if search_resp.status_code == 200:
-            search_data = search_resp.json()
-            if search_data.get('found'):
-                full_name = search_data.get('full_name', crop_name)
-                return f"Yes, I recognize {full_name}, but I am currently gathering detailed cultivation data for it."
-    except Exception:
-        pass
+    for item in CACHED_PLANTS_DATA:
+        cname = item.get("crop_name", "")
+        if cname.lower() == crop_name.lower() or crop_name.lower() in cname.lower():
+            return f"Yes, I recognize {cname}, but I am currently gathering detailed cultivation data for it."
 
     return DEFAULT_CULTIVATION_GUIDES.get(crop_name, f'I do not recognize {crop_name} or have a guide for it yet.')
 
@@ -475,37 +461,28 @@ def local_llm_generate(intent, entities, language, message):
             crop_name_cap = crop.capitalize()
 
             # Remote development lookup
-            try:
-                resp = requests.get(f"{DATASET_API_BASE}/development", timeout=3)
-                if resp.status_code == 200:
-                    for item in resp.json():
-                        if item.get('crop_name', '').lower() == crop.lower():
-                            cat = item.get('category', 'Plant')
-                            dev = item.get('development', {})
-                            climate = dev.get('climate_required', 'various climates')
-                            soil = dev.get('soil_required', 'well-drained soil')
-                            season = dev.get('planting_season', 'appropriate seasons')
-                            return (
-                                f"{crop_name_cap} is categorized as {cat}. It generally thrives in {climate} "
-                                f"and prefers {soil}. The typical planting season is {season}. "
-                                "You can ask me how to grow it or about its diseases for more details!"
-                            )
-            except Exception:
-                pass
+            for item in CACHED_PLANTS_DATA:
+                if item.get('crop_name', '').lower() == crop.lower():
+                    cat = item.get('category', 'Plant')
+                    dev = item.get('development', {})
+                    climate = dev.get('climate_required', 'various climates')
+                    soil = dev.get('soil_required', 'well-drained soil')
+                    season = dev.get('planting_season', 'appropriate seasons')
+                    return (
+                        f"{crop_name_cap} is categorized as {cat}. It generally thrives in {climate} "
+                        f"and prefers {soil}. The typical planting season is {season}. "
+                        "You can ask me how to grow it or about its diseases for more details!"
+                    )
 
             # Remote search fallback
-            try:
-                search_resp = requests.get(f"{DATASET_API_BASE}/plants/search?q={crop}", timeout=3)
-                if search_resp.status_code == 200:
-                    data = search_resp.json()
-                    if data.get('found'):
-                        return (
-                            f"{data.get('full_name', crop_name_cap)} is a recognized plant in our system, "
-                            "but I'm still gathering its detailed climate and soil preferences. "
-                            "You can ask me how to grow it or what diseases affect it!"
-                        )
-            except Exception:
-                pass
+            for item in CACHED_PLANTS_DATA:
+                cname = item.get("crop_name", "")
+                if crop.lower() in cname.lower():
+                    return (
+                        f"{cname} is a recognized plant in our system, "
+                        "but I'm still gathering its detailed climate and soil preferences. "
+                        "You can ask me how to grow it or what diseases affect it!"
+                    )
 
             return f"{crop_name_cap} is a plant. You can ask me how to cultivate it or about its diseases."
 
@@ -515,22 +492,17 @@ def local_llm_generate(intent, entities, language, message):
         if not crop:
             return 'Please specify the plant name so I can give you the specific details.'
 
-        try:
-            resp = requests.get(f"{DATASET_API_BASE}/development", timeout=3)
-            if resp.status_code == 200:
-                for item in resp.json():
-                    if item.get('crop_name', '').lower() == crop.lower():
-                        dev = item.get('development', {})
-                        if intent == 'snippet_water':
-                            return f"Watering for {crop.capitalize()}: {dev.get('irrigation', 'Data not available.')}"
-                        if intent == 'snippet_soil':
-                            return f"Soil required for {crop.capitalize()}: {dev.get('soil_required', 'Data not available.')}"
-                        if intent == 'snippet_climate':
-                            return f"Climate required for {crop.capitalize()}: {dev.get('climate_required', 'Data not available.')}"
-                        if intent == 'snippet_season':
-                            return f"Planting season for {crop.capitalize()}: {dev.get('planting_season', 'Data not available.')}"
-        except Exception:
-            pass
+        for item in CACHED_PLANTS_DATA:
+            if item.get('crop_name', '').lower() == crop.lower():
+                dev = item.get('development', {})
+                if intent == 'snippet_water':
+                    return f"Watering for {crop.capitalize()}: {dev.get('irrigation', 'Data not available.')}"
+                if intent == 'snippet_soil':
+                    return f"Soil required for {crop.capitalize()}: {dev.get('soil_required', 'Data not available.')}"
+                if intent == 'snippet_climate':
+                    return f"Climate required for {crop.capitalize()}: {dev.get('climate_required', 'Data not available.')}"
+                if intent == 'snippet_season':
+                    return f"Planting season for {crop.capitalize()}: {dev.get('planting_season', 'Data not available.')}"
 
         return f"I couldn't find specific details for {crop}. You can ask 'How to grow {crop}' for the full guide."
 
@@ -742,8 +714,10 @@ def logout():
     return redirect(url_for('login'))
 
 
+# Initialize the database so it's created even when running via Gunicorn on Render
+init_db()
+
 if __name__ == "__main__":
-    init_db()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
 
