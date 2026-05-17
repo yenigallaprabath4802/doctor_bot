@@ -8,12 +8,11 @@
             <p>Welcome, {{ session.user }}. How can I help your farm today?</p>
         </div>
         <div class="theme-switch-wrapper">
-            <label class="theme-switch" for="checkbox" title="Toggle dark mode">
-                <span>Light</span>
-                <input type="checkbox" id="checkbox" title="Toggle between light and dark theme" />
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
                 <div class="slider round"></div>
-                <span>Dark</span>
             </label>
+            <em>Dark Mode</em>
         </div>
     </div>
 
@@ -59,16 +58,16 @@
                         <polyline points="21 15 16 10 5 21"></polyline>
                     </svg>
                 </label>
-                <input type="file" id="image_files" name="image_files" accept="image/*" multiple class="hidden-file-input">
-                <button type="submit" class="send-btn" title="Send message">
-                    <svg viewBox="0 0 24 24" width="10" height="20" stroke="currentColor" stroke-width="2" fill="none"
-                        stroke-linecap="round" stroke-linejoin="round" aria-label="Send">
+                <input type="file" id="image_files" name="image_files" accept="image/*" multiple style="display: none;">
+                <button type="submit" class="send-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <line x1="22" y1="2" x2="11" y2="13"></line>
                         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
                 </button>
             </div>
-            <br>
+
             <div class="voice-controls">
                 <button type="button" id="voice-btn" class="voice-btn" title="Speech to Text">🎤 Speak</button>
                 <button type="button" id="speak-btn" class="voice-btn" title="Read Aloud">🔊 Read Aloud</button>
