@@ -1,0 +1,172 @@
+BOOK LIST WORKSHEET — Finding the Right Book
+==============================================
+Assignment 1 | Your Name: ___________________
+
+STUDENT'S REQUEST:
+"I need a book about animals that live in the ocean, and it should
+be easy enough for a 4th grader to read."
+
+A perfect match = ocean animals + reading level grades 3–4.
+
+---------------------------------------------------------------------
+SHELF A
+---------------------------------------------------------------------
+ #  | Title                          | Topic           | Reading Level
+----|--------------------------------|-----------------|-------------
+ 1  | Sharks of the Deep             | Ocean Animals   | Grades 3–4
+ 2  | My First ABCs                  | Alphabet        | Grades 1–2
+ 3  | Volcanoes and Earthquakes      | Earth Science   | Grades 5–6
+ 4  | All About Penguins             | Ocean Animals   | Grades 1–2
+ 5  | The Solar System               | Space           | Grades 3–4
+ 6  | Rainforest Adventures          | Jungle Animals  | Grades 3–4
+
+---------------------------------------------------------------------
+SHELF B
+---------------------------------------------------------------------
+ #  | Title                          | Topic           | Reading Level
+----|--------------------------------|-----------------|-------------
+ 7  | Whales: Giants of the Sea      | Ocean Animals   | Grades 5–6
+ 8  | Amazing Insects                | Land Animals    | Grades 3–4
+ 9  | The Water Cycle                | Earth Science   | Grades 3–4
+10  | Coral Reef Creatures           | Ocean Animals   | Grades 3–4
+11  | Kings and Queens of England    | History         | Grades 5–6
+12  | How Seeds Grow                 | Plants          | Grades 1–2
+
+---------------------------------------------------------------------
+SHELF C
+---------------------------------------------------------------------
+ #  | Title                          | Topic           | Reading Level
+----|--------------------------------|-----------------|-------------
+13  | Robots and Machines            | Technology      | Grades 5–6
+14  | Life in a Pond                 | Freshwater      | Grades 3–4
+15  | Dolphins and Their Friends     | Ocean Animals   | Grades 3–4
+16  | Planet Mars                    | Space           | Grades 3–4
+17  | Butterflies Up Close           | Land Animals    | Grades 1–2
+18  | Storms and Weather             | Earth Science   | Grades 5–6
+
+---------------------------------------------------------------------
+SHELF D
+---------------------------------------------------------------------
+ #  | Title                          | Topic           | Reading Level
+----|--------------------------------|-----------------|-------------
+19  | Turtles of the Sea             | Ocean Animals   | Grades 1–2
+20  | Cooking Fun for Kids           | Cooking         | Grades 3–4
+21  | Ancient Egypt                  | History         | Grades 3–4
+22  | Starfish and Sea Urchins       | Ocean Animals   | Grades 5–6
+23  | Bears of North America         | Land Animals    | Grades 5–6
+24  | Jellyfish Glow                 | Ocean Animals   | Grades 3–4
+
+---------------------------------------------------------------------
+SHELF E
+---------------------------------------------------------------------
+ #  | Title                          | Topic           | Reading Level
+----|--------------------------------|-----------------|-------------
+25  | Trains Through History         | Transportation  | Grades 3–4
+26  | Octopus: Master of Disguise    | Ocean Animals   | Grades 5–6
+27  | My Pet Hamster                 | Pets            | Grades 1–2
+28  | Music Around the World         | Music           | Grades 3–4
+29  | Tide Pool Treasures            | Ocean Animals   | Grades 3–4
+30  | Dinosaurs Rule!                | Prehistoric     | Grades 1–2
+
+
+=====================================================================
+PART 1 — Check Every Single Book
+=====================================================================
+Go shelf by shelf (A → B → C → D → E), check each book in order.
+
+ #  | Title                          | Match? (Yes / Partial / No)
+----|--------------------------------|----------------------------
+ 1  | Sharks of the Deep             |
+ 2  | My First ABCs                  |
+ 3  | Volcanoes and Earthquakes      |
+ 4  | All About Penguins             |
+ 5  | The Solar System               |
+ 6  | Rainforest Adventures          |
+ 7  | Whales: Giants of the Sea      |
+ 8  | Amazing Insects                |
+ 9  | The Water Cycle                |
+10  | Coral Reef Creatures           |
+11  | Kings and Queens of England    |
+12  | How Seeds Grow                 |
+13  | Robots and Machines            |
+14  | Life in a Pond                 |
+15  | Dolphins and Their Friends     |
+16  | Planet Mars                    |
+17  | Butterflies Up Close           |
+18  | Storms and Weather             |
+19  | Turtles of the Sea             |
+20  | Cooking Fun for Kids           |
+21  | Ancient Egypt                  |
+22  | Starfish and Sea Urchins       |
+23  | Bears of North America         |
+24  | Jellyfish Glow                 |
+25  | Trains Through History         |
+26  | Octopus: Master of Disguise    |
+27  | My Pet Hamster                 |
+28  | Music Around the World         |
+29  | Tide Pool Treasures            |
+30  | Dinosaurs Rule!                |
+
+How many books did you check before finding a perfect match? _____
+List all perfect matches: ________________________________________
+
+
+=====================================================================
+PART 2 — Follow Your Gut
+=====================================================================
+Which shelf will you try first? Shelf ____
+Why? ________________________________________________________________
+
+Write the order you checked books (by number):
+___ → ___ → ___ → ___ → ___ → ___ → ___ → ___ → ___ → ___
+___ → ___ → ___ → ___ → ___ → ___ → ___ → ___ → ___ → ___
+
+How many books did you check before finding a perfect match? _____
+Did going deep into one shelf first help or waste time?
+_____________________________________________________________________
+
+
+=====================================================================
+PART 3 — Use Your Best Guess
+=====================================================================
+Rate at least 10 books before you start checking.
+
+"How close is the topic?"       0 = not at all ... 5 = perfect
+"Is the reading level right?"   0 = way off    ... 5 = just right
+
+ #  | Title                          | Topic (0–5) | Level (0–5) | Total
+----|--------------------------------|-------------|-------------|------
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+    |                                |             |             |
+
+Which book did you check first (highest total)? #____
+How many books did you check before finding a perfect match? _____
+Why was this faster (or slower) than the other strategies?
+_____________________________________________________________________
+_____________________________________________________________________
+
+
+=====================================================================
+ANSWER KEY (for instructors only)
+=====================================================================
+Perfect matches (ocean animals + grades 3–4):
+  #1  — Sharks of the Deep
+  #10 — Coral Reef Creatures
+  #15 — Dolphins and Their Friends
+  #24 — Jellyfish Glow
+  #29 — Tide Pool Treasures
+
+Partial matches (right topic, wrong level):
+  #4  — All About Penguins        (Ocean Animals, but Grades 1–2)
+  #7  — Whales: Giants of the Sea (Ocean Animals, but Grades 5–6)
+  #19 — Turtles of the Sea        (Ocean Animals, but Grades 1–2)
+  #22 — Starfish and Sea Urchins  (Ocean Animals, but Grades 5–6)
+  #26 — Octopus: Master of Disguise (Ocean Animals, but Grades 5–6)

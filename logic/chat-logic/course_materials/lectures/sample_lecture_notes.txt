@@ -1,0 +1,43 @@
+LECTURE 4 — Machine Learning Basics
+=====================================
+
+WHAT IS MACHINE LEARNING?
+Machine learning is a subset of AI where systems learn patterns from
+data instead of being explicitly programmed. The system improves its
+performance on a task through experience.
+
+THREE TYPES OF MACHINE LEARNING:
+
+1. SUPERVISED LEARNING
+   - Training data includes input-output pairs (labeled data)
+   - Goal: learn a function that maps inputs to outputs
+   - Examples: spam detection, image classification, price prediction
+   - Algorithms: Linear Regression, Decision Trees, SVM, Neural Networks
+
+2. UNSUPERVISED LEARNING
+   - Training data has no labels
+   - Goal: find hidden structure or patterns in data
+   - Examples: customer segmentation, anomaly detection, topic modeling
+   - Algorithms: K-Means, DBSCAN, PCA, Autoencoders
+
+3. REINFORCEMENT LEARNING
+   - Agent learns by interacting with an environment
+   - Receives rewards or penalties for actions
+   - Goal: maximize cumulative reward
+   - Examples: game playing, robotics, self-driving cars
+
+KEY CONCEPTS:
+- Training Set: Data used to train the model
+- Test Set: Data held out to evaluate performance
+- Overfitting: Model memorizes training data, fails on new data
+- Underfitting: Model is too simple to capture patterns
+- Bias-Variance Tradeoff: Balance between model complexity and generalization
+
+EVALUATION METRICS:
+- Accuracy: percentage of correct predictions
+- Precision: of predicted positives, how many are actually positive
+- Recall: of actual positives, how many did we catch
+- F1 Score: harmonic mean of precision and recall
+
+NEXT CLASS: We'll implement a simple linear regression model from scratch.
+Reading: Chapter 18 of Russell & Norvig

@@ -1,0 +1,93 @@
+ASSIGNMENT 1 — Finding the Right Book: How AI Searches for Answers
+===================================================================
+Due: End of Week 3
+Points: 100
+
+OBJECTIVE:
+Experience how AI searches through options to find the best result by role-playing three different search strategies in a school library scenario. No coding or technical background needed — just curiosity and a pencil.
+
+SCENARIO:
+Imagine you are a school librarian. A student walks in and says:
+"I need a book about animals that live in the ocean, and it should
+be easy enough for a 4th grader to read."
+
+Your library has 30 books spread across 5 shelves (A–E). Each book
+has three labels on it:
+  - Topic (animals, space, history, ocean, plants, etc.)
+  - Reading level (grades 1–2, grades 3–4, grades 5–6)
+  - Shelf location
+
+Some books match one condition (e.g., about animals but too hard).
+Some match the other (e.g., right reading level but about space).
+Only a few match both perfectly. Your job is to find the best book
+using three different strategies.
+
+A book list worksheet is provided with all 30 books and their labels.
+
+PART 1 — Check Every Single Book — 25 points
+   Go through the shelves one by one, from Shelf A to Shelf E,
+   checking every book in order. For each book, write down whether
+   it matches the student's request (Yes / Partial / No).
+   - How many books did you check before finding a perfect match?
+   - List all the perfect matches you found.
+
+PART 2 — Follow Your Gut — 25 points
+   This time, pick the shelf that "feels" most likely (e.g., the
+   ocean shelf) and check every book there before moving on. If
+   nothing works, pick another shelf and go deep again.
+   - How many books did you check before finding a perfect match?
+   - Did going deep into one shelf first help or waste time?
+
+PART 3 — Use Your Best Guess — 30 points
+   Now try a smarter approach. Before opening any book, glance at
+   its labels and ask yourself two quick questions:
+
+   "How close is this topic to what the student wants?" — rate it
+   from 0 (not at all) to 5 (perfect match).
+
+   "Is the reading level right for a 4th grader?" — rate it from
+   0 (way too easy or too hard) to 5 (just right).
+
+   Add those two ratings together. A book that scores 10 is
+   exactly what the student needs. Start by checking the books
+   with the highest ratings first.
+   - Show your ratings for at least 10 books.
+   - How many books did you check before finding a perfect match?
+   - Why was this faster (or slower) than the other strategies?
+
+PART 4 — Reflection (1 page) — 20 points
+   Write a short reflection answering these questions:
+   - Which strategy found a good book with the least effort?
+   - When might the "check everything" approach (Part 1) actually
+     be better than the "best guess" approach (Part 3)?
+   - Think about your own classroom: when you search for a lesson
+     plan, a worksheet, or a video for your students, which of
+     these three strategies do you naturally use?
+   - How does understanding these strategies change the way you
+     think about what AI does when it "searches" for an answer?
+
+NOTE FOR CURIOUS READERS:
+   The three strategies you just tried have names in computer
+   science. Part 1 is called "Breadth-First Search" (BFS), Part 2
+   is called "Depth-First Search" (DFS), and Part 3 is called
+   "A* Search." The "best guess" rating you used in Part 3 is
+   what computer scientists call a "heuristic" — a quick estimate
+   that helps you make smarter choices without checking everything.
+
+MATERIALS:
+- Book list worksheet (download from the course portal or use the
+  printed copy handed out in class)
+- A pencil and a highlighter
+
+SUBMISSION:
+- Submit your completed worksheet and reflection
+- Upload a photo/scan (worksheet.pdf) and reflection (reflection.pdf)
+  to the course portal before 11:59 PM on the due date
+
+HINTS:
+- Start with Part 1 — just go book by book, no thinking required
+- For Part 3, you do not need to score all 30 books upfront — score
+  a handful, check the best ones, and score more only if needed
+- There are no wrong answers in the reflection — what matters is
+  showing that you understand why one approach works better than
+  another in different situations

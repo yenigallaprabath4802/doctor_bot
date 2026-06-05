@@ -1,0 +1,45 @@
+COURSE SYLLABUS — Introduction to Artificial Intelligence
+=========================================================
+
+Instructor: Dr. Sarah Chen
+Office Hours: Tuesday & Thursday, 2:00 PM - 4:00 PM (Room 301)
+Email: schen@university.edu
+
+COURSE OVERVIEW:
+This introductory course covers the fundamental concepts of Artificial
+Intelligence, including search algorithms, machine learning basics,
+natural language processing, and ethical considerations in AI.
+
+SCHEDULE:
+Week 1:  What is AI? History and Foundations
+Week 2:  Search Algorithms (BFS, DFS, A*)
+Week 3:  Knowledge Representation
+Week 4:  Machine Learning Basics
+Week 5:  Supervised Learning (Classification, Regression)
+Week 6:  Unsupervised Learning (Clustering, Dimensionality Reduction)
+Week 7:  MIDTERM EXAM
+Week 8:  Neural Networks Fundamentals
+Week 9:  Natural Language Processing
+Week 10: Computer Vision Basics
+Week 11: Ethics in AI
+Week 12: Final Project Presentations
+
+GRADING:
+- Assignments (4 total): 40%
+- Midterm Exam: 20%
+- Final Project: 30%
+- Participation: 10%
+
+LATE POLICY:
+Assignments lose 10% per day late, up to 3 days maximum.
+After 3 days, assignments receive a zero unless an extension was granted.
+
+ACADEMIC INTEGRITY:
+All submitted work must be your own. Collaboration on assignments is
+encouraged for discussion, but each student must write their own code
+and report. Use of AI tools (ChatGPT, etc.) must be disclosed.
+
+TEXTBOOK:
+"Artificial Intelligence: A Modern Approach" by Russell & Norvig (4th Edition)
+- Available at the campus bookstore and online
+- Selected chapters will be assigned as readings

@@ -1,0 +1,25 @@
+# Spark — AI Teaching Companion
+# ===============================
+# Install with: pip install -r requirements.txt
+
+# Core framework (Ollama LLM, Kokoro TTS, Whisper STT, WebRTC transport)
+pipecat-ai[webrtc,silero,ollama,kokoro,whisper]>=0.0.99
+
+# Web server
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Logging
+loguru>=0.7.0
+
+# HTTP client (for WebRTC)
+aiohttp>=3.9.0
+websockets
+
+# Optional: PDF and DOCX support for course materials
+# Uncomment these if you want to use .pdf or .docx files:
+# PyPDF2>=3.0.0
+# python-docx>=1.0.0

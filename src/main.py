@@ -48,6 +48,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 UPLOAD_FOLDER = BASE_DIR / 'static' / 'uploads'
 UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_DOCUMENT_EXTENSIONS = {'txt', 'pdf', 'docx'}
 
 TEMPLATE_DIR = BASE_DIR / 'templates'
 STATIC_DIR = BASE_DIR / 'static'
@@ -60,8 +61,8 @@ MONGO_URI = os.environ.get('MONGO_URI', 'mongodb+srv://231fa04802_db_user:DqSE99
 mongo_client = MongoClient(MONGO_URI)
 mongo_db = mongo_client['agrivoice_cloud']
 
-# Dataset API base (hosted on GitHub Pages - static JSON files)
-DATASET_API_BASE = 'https://yenigallaprabath4802.github.io/AgriVoice_Api/api_data'
+# Dataset API base
+DATASET_API_BASE = 'http://localhost:8000/api'
 
 KNOWN_CROPS = ['rice', 'tomato', 'wheat', 'cotton', 'maize', 'banana', 'mango', 'chili', 'sugarcane']
 
@@ -69,14 +70,14 @@ KNOWN_CROPS = ['rice', 'tomato', 'wheat', 'cotton', 'maize', 'banana', 'mango', 
 CACHED_PLANTS_DATA = []
 CACHED_DISEASE_DATA = []
 try:
-    resp = requests.get(f'{DATASET_API_BASE}/plants_development.json', timeout=5)
+    resp = requests.get(f'{DATASET_API_BASE}/development', timeout=5)
     if resp.status_code == 200:
         CACHED_PLANTS_DATA = resp.json()
         for item in CACHED_PLANTS_DATA:
             cname = item.get("crop_name", "").lower()
             if cname and cname not in KNOWN_CROPS:
                 KNOWN_CROPS.append(cname)
-    resp_d = requests.get(f'{DATASET_API_BASE}/plants_disease.json', timeout=5)
+    resp_d = requests.get(f'{DATASET_API_BASE}/disease', timeout=5)
     if resp_d.status_code == 200:
         CACHED_DISEASE_DATA = resp_d.json()
 except Exception:
@@ -198,20 +199,57 @@ def is_online():
 def allowed_image_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
+def allowed_document_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_DOCUMENT_EXTENSIONS
 
-def process_uploaded_images(files, user):
+
+def process_uploaded_files(files, user):
     if not files:
-        return []
-    saved_names = []
+        return {'images': [], 'documents': []}
+    saved_images = []
+    saved_documents = []
     for uploaded_file in files:
-        if uploaded_file and allowed_image_file(uploaded_file.filename):
+        if uploaded_file:
             filename = secure_filename(uploaded_file.filename)
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             saved_name = f"{user}_{timestamp}_{filename}"
             saved_path = UPLOAD_FOLDER / saved_name
-            uploaded_file.save(saved_path)
-            saved_names.append(saved_name)
-    return saved_names
+            if allowed_image_file(filename):
+                uploaded_file.save(saved_path)
+                saved_images.append(saved_name)
+            elif allowed_document_file(filename):
+                uploaded_file.save(saved_path)
+                saved_documents.append(saved_name)
+    return {'images': saved_images, 'documents': saved_documents}
+
+def cross_reference_database(text):
+    text_lower = text.lower()
+    matches = []
+    # Check remote cache/API data
+    for item in CACHED_PLANTS_DATA:
+        crop = item.get('crop_name', '')
+        if crop and crop.lower() in text_lower:
+            dev = item.get('development', {})
+            matches.append(f"{crop.capitalize()}: Thrives in {dev.get('climate_required', 'various climates')}, Soil: {dev.get('soil_required', 'well-drained soil')}, Season: {dev.get('planting_season', 'appropriate seasons')}")
+            
+    # Check local SQLite crop_knowledge table
+    conn = sqlite3.connect('agrivoice.db')
+    c = conn.cursor()
+    try:
+        c.execute('SELECT crop, guide FROM crop_knowledge')
+        rows = c.fetchall()
+        for row in rows:
+            crop, guide = row
+            if crop.lower() in text_lower and not any(crop.lower() in m.lower() for m in matches):
+                matches.append(f"{crop.capitalize()} Cultivation: {guide}")
+    except sqlite3.Error as e:
+        print(f"DB Error: {e}")
+    finally:
+        conn.close()
+        
+    if matches:
+        return "\n".join(matches)
+    return "No local database matches found for the entities in the document."
 
 
 def add_chat_message(role, message):
@@ -487,55 +525,35 @@ def generate_local_text(prompt, max_new_tokens=80):
         return ''
 
 
-VISION_MODEL_NAME = 'linka/vit-plant-disease'
-VISION_MODEL = None
-
-
-def load_vision_model():
-    global VISION_MODEL
-    if VISION_MODEL is not None:
-        return VISION_MODEL
-    if pipeline is None:
-        print('Transformers pipeline not available; vision model disabled.')
-        return None
-
-    try:
-        VISION_MODEL = pipeline('image-classification', model=VISION_MODEL_NAME, device=-1)
-    except Exception as e:
-        print(f'Vision model load error: {e}')
-        VISION_MODEL = None
-    return VISION_MODEL
-
-
 def analyze_plant_image(image_path):
-    model = load_vision_model()
-    if not model:
-        return "Offline image analysis is currently unavailable."
-    
     try:
-        image = Image.open(image_path)
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+        url = "http://localhost:8000/api/predict/pest"
+        with open(image_path, 'rb') as f:
+            files = {'file': (os.path.basename(image_path), f, 'image/jpeg')}
+            response = requests.post(url, files=files, timeout=10)
             
-        results = model(image)
-        if results and len(results) > 0:
-            top_prediction = results[0]
-            label = top_prediction['label']
-            score = top_prediction['score']
+        if response.status_code == 200:
+            data = response.json()
+            pest_name = data.get('prediction', 'Unknown')
+            confidence = data.get('confidence', 0.0)
+            pesticides = data.get('recommended_pesticides', [])
+            image_url = data.get('reference_image_url', None)
             
-            # Format the label nicely
-            formatted_label = label.replace('_', ' ').replace('-', ' ').title()
+            if image_url and not image_url.startswith('http'):
+                image_url = f"http://localhost:8000{image_url}"
+                
+            formatted_label = pest_name.replace('_', ' ').title()
             
-            # Additional context mapping
-            if 'healthy' in formatted_label.lower():
-                response = f"I analyzed the image. The plant appears to be Healthy (Confidence: {score:.1%}). Keep up the good work!"
-            else:
-                response = f"I analyzed the image. The plant appears to be affected by {formatted_label} (Confidence: {score:.1%}). You can ask me how to treat this specific disease for a prescription."
-            return localize_to_indian_english(response)
-        return localize_to_indian_english("I couldn't identify any clear issues in the image.")
+            res_text = f"I analyzed the image. The plant appears to be affected by {formatted_label} (Confidence: {confidence:.1%}). "
+            if pesticides:
+                res_text += f"Recommended treatments: {', '.join(pesticides)}."
+                
+            return localize_to_indian_english(res_text), image_url
+            
+        return localize_to_indian_english("I couldn't identify any clear issues in the image."), None
     except Exception as e:
         print(f"Image analysis error: {e}")
-        return localize_to_indian_english("An error occurred while analyzing the image.")
+        return localize_to_indian_english("An error occurred while analyzing the image with the ML endpoint."), None
 
 def local_diagnosis_logic(message, crop):
     normalized = preprocess_text(message)
@@ -796,7 +814,55 @@ def local_llm_generate(intent, entities, language, message, pincode='500001', la
     return 'I am AgriVoice AI. Ask me about crop care, disease symptoms, or local farming advice.'
 
 
-def chat_response(message, language='English', pincode='500001', lat=None, lon=None):
+def chat_response(message, language='English', pincode='500001', lat=None, lon=None, document_context=""):
+    try:
+        from knowledge_base import create_teaching_context
+        # Use faq mode to pull from root docs, but it could be expanded
+        context_str = create_teaching_context("faq") 
+    except Exception as e:
+        print(f"Knowledge base error: {e}")
+        context_str = ""
+
+    weather_info = get_weather(pincode, lat, lon)
+
+    prompt = f"""IDENTITY:
+You are AgriVoice AI, a highly advanced agricultural assistant and AI Teaching Companion.
+You help farmers and students learn by answering their questions using course materials and your vast knowledge.
+
+RULES:
+- Be accurate — use information from the provided course materials where possible.
+- If you don't know or the materials don't cover it, you can use your general farming knowledge.
+- Keep responses concise, clear, and actionable.
+- Respond in this language: {language}.
+- Current weather for the user: {weather_info}.
+
+{context_str}
+
+DOCUMENT UPLOAD AND DATABASE CROSS-REFERENCE:
+{document_context}
+
+USER REQUEST:
+{message}
+"""
+
+    try:
+        ollama_url = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434/api/generate")
+        # Try gemma3:4b first, fallback to llama3 if not specified
+        payload = {
+            "model": os.environ.get("LLM_MODEL", "gemma3:4b"),
+            "prompt": prompt,
+            "stream": False
+        }
+        resp = requests.post(ollama_url, json=payload, timeout=30)
+        if resp.status_code == 200:
+            data = resp.json()
+            return localize_to_indian_english(data.get("response", "I am AgriVoice AI. How can I help?"))
+        else:
+            print(f"Ollama returned {resp.status_code}")
+    except Exception as e:
+        print(f"Ollama generation error: {e}")
+
+    # Fallback if Ollama fails
     try:
         intent, entities = local_nlp_parse(message)
         response = local_llm_generate(intent, entities, language, message, pincode, lat, lon)
@@ -915,23 +981,39 @@ def chat():
 
     if request.method == 'POST':
         image_analysis_response = ""
+        document_context = ""
         if 'image_files' in request.files and request.files.getlist('image_files'):
             image_files = request.files.getlist('image_files')
-            saved_names = process_uploaded_images(image_files, session['user'])
-            if saved_names:
-                add_chat_message('image', saved_names)
-                
-                # Perform analysis
+            processed_files = process_uploaded_files(image_files, session['user'])
+            
+            if processed_files['images']:
+                add_chat_message('image', processed_files['images'])
                 analyses = []
-                for name in saved_names:
+                image_url = None
+                for name in processed_files['images']:
                     image_path = UPLOAD_FOLDER / name
-                    result = analyze_plant_image(str(image_path))
-                    analyses.append(result)
-                
+                    res_text, res_url = analyze_plant_image(str(image_path))
+                    analyses.append(res_text)
+                    if res_url:
+                        image_url = res_url
                 image_analysis_response = " ".join(analyses)
                 add_chat_message('bot', image_analysis_response)
-            else:
-                add_chat_message('bot', 'Uploaded files were not valid image types.')
+                
+            if processed_files['documents']:
+                from knowledge_base import read_file
+                from pathlib import Path
+                doc_texts = []
+                for name in processed_files['documents']:
+                    doc_path = UPLOAD_FOLDER / name
+                    text = read_file(Path(doc_path))
+                    if text:
+                        doc_texts.append(f"--- Document: {name} ---\n{text}")
+                        add_chat_message('bot', f'Successfully read document: {name}. I am analyzing its contents.')
+                
+                if doc_texts:
+                    full_text = "\n".join(doc_texts)
+                    db_context = cross_reference_database(full_text)
+                    document_context = f"{full_text}\n\nDATABASE MATCHES:\n{db_context}"
 
         if 'chat_message' in request.form and request.form['chat_message'].strip():
             user_message = request.form['chat_message'].strip()
@@ -942,10 +1024,17 @@ def chat():
             # Combine image analysis context if present
             if image_analysis_response:
                 user_message_with_context = f"Image Context: {image_analysis_response}. User: {user_message}"
-                response = chat_response(user_message_with_context, language, pincode)
+                response = chat_response(user_message_with_context, language, pincode, lat=None, lon=None, document_context=document_context)
             else:
-                response = chat_response(user_message, language, pincode)
+                response = chat_response(user_message, language, pincode, lat=None, lon=None, document_context=document_context)
                 
+            add_chat_message('bot', response)
+        elif document_context:
+            language = session.get('language', 'English')
+            pincode = session.get('pincode', '500001')
+            user_message = "I have uploaded a document. Please review it and tell me the most important details."
+            add_chat_message('user', "Uploaded document for analysis.")
+            response = chat_response(user_message, language, pincode, lat=None, lon=None, document_context=document_context)
             add_chat_message('bot', response)
 
         if session.get('chat_history'):
@@ -964,9 +1053,11 @@ def api_chat():
     
     user_message = ""
     image_analysis_response = ""
+    image_url = None
     lat = None
     lon = None
     
+    document_context = ""
     # Handle both JSON and FormData
     if request.is_json:
         data = request.get_json()
@@ -979,39 +1070,57 @@ def api_chat():
         lon = request.form.get('lon')
         if 'image_files' in request.files and request.files.getlist('image_files'):
             image_files = request.files.getlist('image_files')
-            saved_names = process_uploaded_images(image_files, session['user'])
-            if saved_names:
-                add_chat_message('image', saved_names)
-                
-                # Perform analysis
+            processed_files = process_uploaded_files(image_files, session['user'])
+            
+            if processed_files['images']:
+                add_chat_message('image', processed_files['images'])
                 analyses = []
-                for name in saved_names:
+                for name in processed_files['images']:
                     image_path = UPLOAD_FOLDER / name
-                    result = analyze_plant_image(str(image_path))
-                    analyses.append(result)
-                
+                    res_text, res_url = analyze_plant_image(str(image_path))
+                    analyses.append(res_text)
+                    if res_url:
+                        image_url = res_url
                 image_analysis_response = " ".join(analyses)
+                
+            if processed_files['documents']:
+                from knowledge_base import read_file
+                from pathlib import Path
+                doc_texts = []
+                for name in processed_files['documents']:
+                    doc_path = UPLOAD_FOLDER / name
+                    text = read_file(Path(doc_path))
+                    if text:
+                        doc_texts.append(f"--- Document: {name} ---\n{text}")
+                
+                if doc_texts:
+                    full_text = "\n".join(doc_texts)
+                    db_context = cross_reference_database(full_text)
+                    document_context = f"{full_text}\n\nDATABASE MATCHES:\n{db_context}"
 
-    if not user_message and not image_analysis_response:
+    if not user_message and not image_analysis_response and not document_context:
         return jsonify({'error': 'No message provided'}), 400
         
     language = session.get('language', 'English')
     pincode = session.get('pincode', '500001')
     
-    if user_message:
+    if user_message or document_context:
+        if not user_message and document_context:
+            user_message = "I have uploaded a document. Please review it and tell me the most important details."
+            
         add_chat_message('user', user_message)
         if image_analysis_response:
             # First send the image analysis so they see it, then send the response to their text
             add_chat_message('bot', image_analysis_response)
             
             user_message_with_context = f"Image Context: {image_analysis_response}. User: {user_message}"
-            response = chat_response(user_message_with_context, language, pincode, lat, lon)
+            response = chat_response(user_message_with_context, language, pincode, lat, lon, document_context)
             add_chat_message('bot', response)
             
             # Return combined response for UI
             final_response = f"{image_analysis_response}\n\n{response}"
         else:
-            final_response = chat_response(user_message, language, pincode, lat, lon)
+            final_response = chat_response(user_message, language, pincode, lat, lon, document_context)
             add_chat_message('bot', final_response)
     else:
         add_chat_message('bot', image_analysis_response)
@@ -1020,10 +1129,14 @@ def api_chat():
     if session.get('chat_history'):
         sync_chat_history_to_cloud(session['user'], session['chat_history'])
         
-    return jsonify({
+    response_data = {
         'response': final_response,
         'role': 'bot'
-    })
+    }
+    if image_url:
+        response_data['image_url'] = image_url
+        
+    return jsonify(response_data)
 
 
 @app.route('/speak', methods=['POST'])
@@ -1035,6 +1148,31 @@ def speak():
         return jsonify({'success': False, 'error': 'No text provided.'}), 400
     success = voice.text_to_speech(text, language)
     return jsonify({'success': success})
+
+@app.route('/api/tts', methods=['POST'])
+@route_error_handler
+def api_tts():
+    if not session.get('user'):
+        return jsonify({'error': 'Unauthorized'}), 401
+        
+    data = request.get_json() if request.is_json else request.form
+    text = data.get('text', '').strip()
+    voice_style = data.get('voice_style', 'male').lower()
+    
+    if not text:
+        return jsonify({'error': 'No text provided'}), 400
+        
+    # Generate unique filename
+    import uuid
+    filename = f"tts_{uuid.uuid4().hex}.wav"
+    output_path = UPLOAD_FOLDER / filename
+    
+    success = voice.generate_tts_audio_file(text, str(output_path), voice_style)
+    
+    if success:
+        return jsonify({'audio_url': url_for('static', filename=f'uploads/{filename}')})
+    else:
+        return jsonify({'error': 'Failed to generate audio'}), 500
 
 
 @app.route('/register', methods=['GET', 'POST'])

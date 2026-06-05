@@ -1,47 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-.typing-indicator {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 0;
-}
-.typing-indicator span {
-    width: 6px;
-    height: 6px;
-    background-color: var(--text-color, #666);
-    border-radius: 50%;
-    animation: typing 1.4s infinite ease-in-out both;
-}
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-@keyframes typing {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
-}
-.chat-row.user .chat-bubble {
-    animation: slideInRight 0.3s ease-out;
-}
-.chat-row.bot .chat-bubble {
-    animation: slideInLeft 0.3s ease-out;
-}
-@keyframes slideInRight {
-    from { transform: translateX(20px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes slideInLeft {
-    from { transform: translateX(-20px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-</style>
+<!-- Background Video Layer -->
+<video autoplay loop muted playsinline class="video-bg">
+    <!-- Using a beautiful free agriculture stock video from Pexels -->
+    <source src="https://videos.pexels.com/video-files/4255535/4255535-uhd_2560_1440_30fps.mp4" type="video/mp4">
+</video>
+<div class="video-overlay"></div>
 
 <div class="chat-container">
     <div class="chat-header">
         <div class="chat-header-info">
             <h2>AgriVoice Assistant</h2>
-            <p>Welcome, {{ session.user }}. How can I help your farm today?</p>
+            <p>Welcome, {{ session.user }}. Let's make your farm thrive.</p>
         </div>
         <div class="theme-switch-wrapper">
             <label class="theme-switch" for="checkbox">
@@ -55,7 +26,7 @@
     <div class="chat-box" id="chatBox">
         {% if not session.chat_history %}
         <div class="empty-chat-state">
-            <div class="empty-icon">🌱</div>
+            <div class="empty-icon">🌿</div>
             <h3>Start a Conversation</h3>
             <p>Ask about crop diseases, specific cultivation steps, or general plant information.</p>
         </div>
@@ -84,19 +55,21 @@
     <div class="chat-input-area">
         <form class="chat-form" id="chatForm">
             <div class="chat-input-wrapper">
-                <input type="text" id="chat_message" name="chat_message"
-                    placeholder="Type your farming question... (e.g. 'How much water for ginger?')" autocomplete="off">
                 <label for="image_files" class="upload-btn" title="Upload Image">
-                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2.5" fill="none"
                         stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
                         <polyline points="21 15 16 10 5 21"></polyline>
                     </svg>
                 </label>
-                <input type="file" id="image_files" name="image_files" accept="image/*" multiple style="display: none;">
+                <input type="file" id="image_files" name="image_files" accept="image/*, application/pdf, text/plain, .docx" multiple class="hidden-file-input">
+                
+                <input type="text" id="chat_message" name="chat_message"
+                    placeholder="Type your farming question... (e.g. 'How much water for ginger?')" autocomplete="off">
+                
                 <button type="submit" class="send-btn">
-                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none"
                         stroke-linecap="round" stroke-linejoin="round">
                         <line x1="22" y1="2" x2="11" y2="13"></line>
                         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -105,9 +78,13 @@
             </div>
 
             <div class="voice-controls">
+                <select id="voice-style-select" class="voice-btn">
+                    <option value="male">Male Voice</option>
+                    <option value="female">Female Voice</option>
+                </select>
                 <button type="button" id="voice-btn" class="voice-btn" title="Speech to Text">🎤 Speak</button>
                 <button type="button" id="speak-btn" class="voice-btn" title="Read Aloud">🔊 Read Aloud</button>
-                <button type="button" id="location-btn" class="voice-btn" title="Update Location">📍 Update Location</button>
+                <button type="button" id="location-btn" class="voice-btn" title="Update Location">📍 Location</button>
             </div>
         </form>
     </div>
@@ -155,14 +132,18 @@
                     (position) => {
                         currentLat = position.coords.latitude;
                         currentLon = position.coords.longitude;
-                        locationBtn.textContent = '📍 Location Updated';
-                        locationBtn.style.color = '#4CAF50';
-                        setTimeout(() => { locationBtn.textContent = '📍 Update Location'; locationBtn.style.color = ''; }, 3000);
+                        locationBtn.textContent = '📍 Updated';
+                        locationBtn.style.background = 'var(--primary-color)';
+                        locationBtn.style.color = '#fff';
+                        setTimeout(() => { 
+                            locationBtn.textContent = '📍 Location'; 
+                            locationBtn.style.background = '';
+                            locationBtn.style.color = '';
+                        }, 3000);
                     },
                     (error) => {
-                        locationBtn.textContent = '📍 Permission Denied';
-                        setTimeout(() => { locationBtn.textContent = '📍 Update Location'; }, 3000);
-                        console.error('Error getting location', error);
+                        locationBtn.textContent = '📍 Denied';
+                        setTimeout(() => { locationBtn.textContent = '📍 Location'; }, 3000);
                     }
                 );
             } else {
@@ -191,13 +172,17 @@
         if (files.length > 0) {
             e.preventDefault();
             
-            // Create a DataTransfer object to set the files
             const dataTransfer = new DataTransfer();
             files.forEach(file => dataTransfer.items.add(file));
             fileInput.files = dataTransfer.files;
             
-            // Show preview of pasted images
-            const previewContainer = document.getElementById('image-preview-container') || createPreviewContainer();
+            let previewContainer = document.getElementById('image-preview-container');
+            if(!previewContainer) {
+                previewContainer = document.createElement('div');
+                previewContainer.id = 'image-preview-container';
+                previewContainer.className = 'image-preview-container';
+                messageInput.parentElement.parentElement.insertBefore(previewContainer, messageInput.parentElement);
+            }
             previewContainer.innerHTML = '';
             
             files.forEach((file, index) => {
@@ -211,55 +196,65 @@
                     `;
                     previewContainer.appendChild(previewCard);
                     
-                    // Add remove button listener
                     previewCard.querySelector('.remove-image-btn').addEventListener('click', (e) => {
                         e.preventDefault();
-                        removeImageFromPreview(index);
+                        previewCard.remove();
+                        // Reset file input if empty (simplified for aesthetic demo)
+                        if(previewContainer.children.length === 0) {
+                            previewContainer.remove();
+                            fileInput.value = '';
+                            messageInput.placeholder = "Type your farming question... (e.g. 'How much water for ginger?')";
+                        }
                     });
                 };
                 reader.readAsDataURL(file);
             });
             
-            // Indicate that images are pasted
-            messageInput.placeholder = `Type your message... (${files.length} image${files.length > 1 ? 's' : ''} pasted)`;
+            messageInput.placeholder = `Type your message... (${files.length} file${files.length > 1 ? 's' : ''} attached)`;
         }
     });
 
-    function createPreviewContainer() {
-        const container = document.createElement('div');
-        container.id = 'image-preview-container';
-        container.className = 'image-preview-container';
-        messageInput.parentElement.insertBefore(container, messageInput.nextSibling);
-        return container;
-    }
-
-    function removeImageFromPreview(indexToRemove) {
-        // Update fileInput.files by removing the selected file
-        const dataTransfer = new DataTransfer();
-        const currentFiles = fileInput.files;
-        
-        for (let i = 0; i < currentFiles.length; i++) {
-            if (i !== indexToRemove) {
-                dataTransfer.items.add(currentFiles[i]);
+    // Also show preview when selecting via upload button
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        if(files.length > 0) {
+            let previewContainer = document.getElementById('image-preview-container');
+            if(!previewContainer) {
+                previewContainer = document.createElement('div');
+                previewContainer.id = 'image-preview-container';
+                previewContainer.className = 'image-preview-container';
+                messageInput.parentElement.parentElement.insertBefore(previewContainer, messageInput.parentElement);
             }
+            previewContainer.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                if(file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const previewCard = document.createElement('div');
+                        previewCard.className = 'pasted-image-preview';
+                        previewCard.innerHTML = `
+                            <img src="${event.target.result}" alt="Selected image ${index + 1}">
+                        `;
+                        previewContainer.appendChild(previewCard);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    const docCard = document.createElement('div');
+                    docCard.className = 'pasted-image-preview';
+                    docCard.style.display = 'flex';
+                    docCard.style.alignItems = 'center';
+                    docCard.style.justifyContent = 'center';
+                    docCard.style.background = 'rgba(255,255,255,0.8)';
+                    docCard.innerHTML = `<span style="font-size: 0.8rem; font-weight: 600; text-align: center; color: var(--primary-color);">📄 DOC</span>`;
+                    previewContainer.appendChild(docCard);
+                }
+            });
+            messageInput.placeholder = `Type your message... (${files.length} file${files.length > 1 ? 's' : ''} attached)`;
         }
-        
-        fileInput.files = dataTransfer.files;
-        
-        // Update preview
-        const previewCards = document.querySelectorAll('.pasted-image-preview');
-        if (previewCards[indexToRemove]) {
-            previewCards[indexToRemove].remove();
-        }
-        
-        // Update placeholder
-        const remainingCount = fileInput.files.length;
-        if (remainingCount === 0) {
-            messageInput.placeholder = "Type your farming question... (e.g. 'How much water for ginger?')";
-        } else {
-            messageInput.placeholder = `Type your message... (${remainingCount} image${remainingCount > 1 ? 's' : ''} pasted)`;
-        }
-    }
+    });
+
+    let usedMic = false;
 
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -279,11 +274,16 @@
         }
         if (files.length > 0) {
             for (let i = 0; i < files.length; i++) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    appendImage('user', e.target.result);
-                };
-                reader.readAsDataURL(files[i]);
+                const file = files[i];
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        appendImage('user', e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    appendMessage('user', `📄 Uploaded: ${file.name}`);
+                }
             }
         }
 
@@ -335,6 +335,15 @@
             
             if (data.response) {
                 appendMessage('bot', data.response, true);
+                if (usedMic) {
+                    playTTS(data.response);
+                    usedMic = false;
+                }
+            }
+            
+            // Check if API returned a reference image URL to display
+            if (data.image_url) {
+                appendImage('bot', data.image_url);
             }
             
         } catch (error) {
@@ -389,7 +398,7 @@
         
         const img = document.createElement('img');
         img.src = imageUrl;
-        img.alt = "Uploaded image";
+        img.alt = "Reference image";
         
         imgCard.appendChild(img);
         imgContainer.appendChild(imgCard);
@@ -405,7 +414,7 @@
         if (index < text.length) {
             element.textContent += text.charAt(index);
             chatBox.scrollTop = chatBox.scrollHeight;
-            setTimeout(() => typeWriter(element, text, index + 1), 15);
+            setTimeout(() => typeWriter(element, text, index + 1), 10); // slightly faster typing
         }
     }
 
@@ -418,7 +427,7 @@
         const bubble = document.createElement('div');
         bubble.className = 'chat-bubble typing-bubble';
         bubble.innerHTML = `
-            <span class="chat-role">Bot</span>
+            <span class="chat-role">AgriVoice AI</span>
             <div class="typing-indicator">
                 <span></span><span></span><span></span>
             </div>
@@ -442,28 +451,18 @@
     if (voiceBtn) {
         voiceBtn.addEventListener('click', function() {
             if (!SpeechRecognition) {
-                appendMessage('bot', 'Microphone access is not supported in this browser. This usually happens if you are not using HTTPS or localhost. Please use a secure connection or type your message.');
+                appendMessage('bot', 'Microphone access is not supported in this browser.');
                 return;
             }
 
             const recognition = new SpeechRecognition();
-            
-            let language = 'en-US';
-            const userLanguage = document.documentElement.lang || navigator.language || 'en-US';
-            if (userLanguage.includes('hi') || userLanguage.includes('hin')) {
-                language = 'hi-IN';
-            } else if (userLanguage.includes('te') || userLanguage.includes('tel')) {
-                language = 'te-IN';
-            } else {
-                language = userLanguage.startsWith('en') ? 'en-US' : userLanguage;
-            }
-            
-            recognition.lang = language;
+            recognition.lang = 'en-US';
             recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
+            
             voiceBtn.textContent = '🎤 Listening...';
+            voiceBtn.style.background = 'rgba(239, 68, 68, 0.2)';
+            voiceBtn.style.color = '#ef4444';
+            voiceBtn.style.borderColor = '#ef4444';
             voiceBtn.disabled = true;
 
             recognition.onresult = function(event) {
@@ -478,57 +477,66 @@
                 
                 if (transcript) {
                     messageInput.value = transcript;
+                    usedMic = true;
                     chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                } else {
-                    appendMessage('bot', 'No speech detected. Please try again.');
                 }
-                voiceBtn.textContent = '🎤 Speak';
-                voiceBtn.disabled = false;
+                resetVoiceBtn();
             };
 
-            recognition.onerror = function(event) {
-                let errorMsg = event.error;
-                if (event.error === 'no-speech') {
-                    errorMsg = 'No speech detected. Please speak clearly.';
-                } else if (event.error === 'network') {
-                    errorMsg = 'Network error. Please check your connection.';
-                } else if (event.error === 'not-allowed') {
-                    errorMsg = 'Microphone access denied. Please allow permissions in your browser.';
-                }
-                appendMessage('bot', 'Microphone error: ' + errorMsg);
-                voiceBtn.textContent = '🎤 Speak';
-                voiceBtn.disabled = false;
+            recognition.onerror = function() {
+                resetVoiceBtn();
             };
 
             recognition.onend = function() {
-                voiceBtn.textContent = '🎤 Speak';
-                voiceBtn.disabled = false;
+                resetVoiceBtn();
             };
 
             recognition.start();
         });
     }
+    
+    function resetVoiceBtn() {
+        voiceBtn.textContent = '🎤 Speak';
+        voiceBtn.style.background = '';
+        voiceBtn.style.color = '';
+        voiceBtn.style.borderColor = '';
+        voiceBtn.disabled = false;
+    }
 
-    // Text to Speech Logic
+    // Text to Speech Logic via Backend API
+    async function playTTS(text) {
+        try {
+            const speakBtn = document.getElementById('speak-btn');
+            if (speakBtn) speakBtn.textContent = '🔊 Generating...';
+            
+            const voiceStyle = document.getElementById('voice-style-select').value;
+            const response = await fetch('/api/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, voice_style: voiceStyle })
+            });
+            const data = await response.json();
+            
+            if (speakBtn) speakBtn.textContent = '🔊 Read Aloud';
+            
+            if (data.audio_url) {
+                const audio = new Audio(data.audio_url);
+                audio.play();
+            }
+        } catch(e) {
+            console.error('TTS error', e);
+            const speakBtn = document.getElementById('speak-btn');
+            if (speakBtn) speakBtn.textContent = '🔊 Read Aloud';
+        }
+    }
+
     const speakBtn = document.getElementById('speak-btn');
     if (speakBtn) {
         speakBtn.addEventListener('click', function() {
             const botMessages = document.querySelectorAll('.chat-row.bot .chat-text');
             const lastBotMessage = botMessages[botMessages.length - 1];
             const text = lastBotMessage ? lastBotMessage.textContent.trim() : '';
-            
-            if (!text) {
-                appendMessage('bot', 'No message to read aloud.');
-                return;
-            }
-
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = navigator.language || 'en-US';
-                window.speechSynthesis.speak(utterance);
-            } else {
-                appendMessage('bot', 'Text-to-speech is not supported in your browser.');
-            }
+            if (text) playTTS(text);
         });
     }
 </script>
