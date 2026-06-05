@@ -24,9 +24,13 @@ import socket
 import requests
 from datetime import datetime
 from pathlib import Path
+import difflib
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from pymongo import MongoClient
 from werkzeug.utils import secure_filename
+from PIL import Image
+import torch
+import torch.nn.functional as F
 
 try:
     from . import voice
@@ -132,30 +136,36 @@ def increment_error_counter(key, message=None):
         last_error['message'] = message
 
 
+import threading
+
 def sync_user_to_cloud(phone, language):
-    try:
-        mongo_db.users.update_one(
-            {'phone': phone},
-            {'$set': {'phone': phone, 'language': language, 'last_sync': datetime.now()}},
-            upsert=True
-        )
-        return True
-    except Exception as e:
-        increment_error_counter('db_error', str(e))
-        return False
+    def background_sync():
+        try:
+            mongo_db.users.update_one(
+                {'phone': phone},
+                {'$set': {'phone': phone, 'language': language, 'last_sync': datetime.now()}},
+                upsert=True
+            )
+        except Exception as e:
+            increment_error_counter('db_error', str(e))
+    
+    threading.Thread(target=background_sync, daemon=True).start()
+    return True
 
 
 def sync_chat_history_to_cloud(phone, chat_history):
-    try:
-        mongo_db.chat_histories.update_one(
-            {'phone': phone},
-            {'$set': {'phone': phone, 'history': chat_history, 'last_sync': datetime.now()}},
-            upsert=True
-        )
-        return True
-    except Exception as e:
-        increment_error_counter('db_error', str(e))
-        return False
+    def background_sync():
+        try:
+            mongo_db.chat_histories.update_one(
+                {'phone': phone},
+                {'$set': {'phone': phone, 'history': chat_history, 'last_sync': datetime.now()}},
+                upsert=True
+            )
+        except Exception as e:
+            increment_error_counter('db_error', str(e))
+            
+    threading.Thread(target=background_sync, daemon=True).start()
+    return True
 
 
 def route_error_handler(func):
@@ -177,10 +187,11 @@ def route_error_handler(func):
 
 def is_online():
     try:
-        conn = socket.create_connection(('8.8.8.8', 53), timeout=3)
-        conn.close()
+        # A simple lightweight GET request to a highly reliable endpoint used by Android
+        # This completely bypasses restrictive corporate/ISP firewalls that block raw sockets or DNS ports.
+        requests.get('http://clients3.google.com/generate_204', timeout=3)
         return True
-    except OSError:
+    except requests.RequestException:
         return False
 
 
@@ -231,61 +242,214 @@ def preprocess_text(text):
     return re.sub(r'\s+', ' ', text)
 
 
+INDIAN_ENGLISH_DICT = {
+    r'\bspring\b': 'Spring (Rabi season)',
+    r'\bsummer\b': 'Summer (Zaid season)',
+    r'\bautumn\b': 'Autumn (Kharif season)',
+    r'\bfall\b': 'Autumn (Kharif season)',
+    r'\bmonsoon\b': 'Monsoon (Kharif season)',
+    r'\bloam\b': 'soft, well-draining soil',
+    r'\bloamy\b': 'soft and well-draining',
+    r'\bprecipitation\b': 'rainfall',
+    r'\bthrives in\b': 'grows best in',
+    r'\boptimum\b': 'best',
+    r'\boptimal\b': 'best',
+    r'\bcultivate\b': 'grow',
+    r'\bcultivating\b': 'growing',
+    r'\bcultivation\b': 'growing',
+    r'\bsusceptible to\b': 'easily affected by',
+    r'\birrigation\b': 'watering',
+    r'\bhectares\b': 'hectares (about 2.5 acres)',
+    r'\byield\b': 'harvest',
+    r'\bfoliage\b': 'leaves',
+    r'\bclimate\b': 'weather conditions',
+    r'\badaptable to general garden climates\b': 'can grow in most normal weather conditions',
+    r'\bgarden loam\b': 'normal field soil'
+}
+
+def localize_to_indian_english(text):
+    if not text:
+        return text
+    
+    localized_text = text
+    for pattern, replacement in INDIAN_ENGLISH_DICT.items():
+        # Using lambda to preserve original case if it was capitalized (mostly)
+        # Actually a simple sub will lowercase the replacement, which is fine for our use case,
+        # but to make it slightly smarter:
+        def match_case(match):
+            word = match.group()
+            if word.istitle():
+                return replacement.capitalize()
+            elif word.isupper():
+                return replacement.upper()
+            return replacement
+            
+        localized_text = re.sub(pattern, match_case, localized_text, flags=re.IGNORECASE)
+        
+    return localized_text
+
+
+CROP_SYNONYMS = {
+    'corn': 'maize',
+    'paddy': 'rice',
+    'brinjal': 'eggplant',
+    'capsicum': 'chili'
+}
+
 def extract_crop_name(message):
     message_lower = message.lower()
+    
+    # Pre-process synonyms (e.g., 'corn' becomes 'maize') so the rest of the logic just works
+    for syn, canonical in CROP_SYNONYMS.items():
+        message_lower = re.sub(r'\b' + re.escape(syn) + r'\b', canonical, message_lower)
+        
+    words = message_lower.split()
 
+    # 1. Exact regex match first (fastest and most accurate)
     for crop in KNOWN_CROPS:
-        if (
-            f' {crop} ' in message_lower
-            or message_lower.startswith(f'{crop} ')
-            or message_lower.endswith(f' {crop}')
-            or message_lower == crop
-        ):
+        if re.search(r'\b' + re.escape(crop.lower()) + r'\b', message_lower):
             return crop.capitalize()
 
-    # Lightweight API search fallback
+    # 2. Fuzzy match for known crops (handles spelling mistakes)
+    known_lower = [c.lower() for c in KNOWN_CROPS]
+    for word in words:
+        if len(word) > 3:  # Skip very short words like 'is', 'the', 'how'
+            matches = difflib.get_close_matches(word, known_lower, n=1, cutoff=0.8)
+            if matches:
+                return matches[0].capitalize()
+
+    # 3. Lightweight API search fallback
     clean_msg = message_lower
     for phrase in ['tell me about', 'how to grow', 'information on', 'what is', 'details on', 'know about']:
         clean_msg = clean_msg.replace(phrase, '').strip()
 
     if clean_msg and len(clean_msg.split()) <= 4:
+        # Exact match first
         for item in CACHED_PLANTS_DATA:
             cname = item.get("crop_name", "").lower()
-            if clean_msg in cname or cname in clean_msg:
+            if clean_msg == cname:
                 return item.get("crop_name").capitalize()
+        # Whole word match
+        for item in CACHED_PLANTS_DATA:
+            cname = item.get("crop_name", "").lower()
+            if re.search(r'\b' + re.escape(clean_msg) + r'\b', cname) or re.search(r'\b' + re.escape(cname) + r'\b', clean_msg):
+                return item.get("crop_name").capitalize()
+        # Fuzzy match fallback for API data
+        all_cnames = [item.get("crop_name", "").lower() for item in CACHED_PLANTS_DATA]
+        matches = difflib.get_close_matches(clean_msg, all_cnames, n=1, cutoff=0.8)
+        if matches:
+            return matches[0].capitalize()
 
     return None
 
 
+EMBEDDING_MODEL_NAME = 'sentence-transformers/all-MiniLM-L6-v2'
+EMBEDDING_MODEL = None
+
+INTENT_EXAMPLES = {
+    'weather': ["What is the weather?", "Is it going to rain today?", "How hot is it outside?", "What's the forecast?", "Is it sunny?"],
+    'cultivation': ["How do I grow this?", "What are the steps to cultivate?", "Tell me how to plant", "Sowing instructions", "Harvesting process", "How to care for this crop", "Cultivation guide"],
+    'diagnosis': ["What disease is this?", "My plant has spots", "Leaves are turning yellow", "How to identify pests", "It looks wilted", "Symptoms of rust"],
+    'prescription': ["What pesticide should I use?", "How much fertilizer to apply?", "Chemical dosage", "Prescribe a treatment", "What to spray for blight"],
+    'snippet_water': ["How much water does it need?", "Irrigation schedule", "When to water the plant", "Watering guide"],
+    'snippet_soil': ["What kind of soil is best?", "Soil requirements", "Does it need clay or sand?", "Dirt type"],
+    'snippet_climate': ["What climate does it prefer?", "Temperature requirements", "Does it need full sun?", "Sunlight needs"],
+    'snippet_season': ["When is the best time to plant?", "Which season to sow?", "Planting month", "When to start seeds"],
+    'info': ["Tell me about this plant", "What is it?", "Give me general information", "Details on this crop"],
+    'greeting': ["Hello", "Hi there", "Good morning", "Namaste", "Hey"],
+    'gratitude': ["Thank you", "Thanks a lot", "I appreciate it", "Thanks"]
+}
+
+INTENT_EMBEDDINGS = {}
+
+def load_embedding_model():
+    global EMBEDDING_MODEL, INTENT_EMBEDDINGS
+    if EMBEDDING_MODEL is not None:
+        return EMBEDDING_MODEL
+    if pipeline is None:
+        print('Transformers pipeline not available; semantic router disabled.')
+        return None
+
+    try:
+        EMBEDDING_MODEL = pipeline('feature-extraction', model=EMBEDDING_MODEL_NAME, device=-1)
+        for intent, examples in INTENT_EXAMPLES.items():
+            embeddings = []
+            for text in examples:
+                out = EMBEDDING_MODEL(text, return_tensors=True)
+                emb = out.mean(dim=1)
+                emb = F.normalize(emb, p=2, dim=1)
+                embeddings.append(emb)
+            INTENT_EMBEDDINGS[intent] = torch.cat(embeddings, dim=0)
+            
+    except Exception as e:
+        print(f'Embedding model load error: {e}')
+        EMBEDDING_MODEL = None
+    return EMBEDDING_MODEL
+
+
+def get_semantic_intent(message):
+    model = load_embedding_model()
+    if not model or not INTENT_EMBEDDINGS:
+        return None
+        
+    try:
+        out = model(message, return_tensors=True)
+        msg_emb = F.normalize(out.mean(dim=1), p=2, dim=1)
+        
+        best_intent = None
+        best_score = -1.0
+        
+        for intent, embs in INTENT_EMBEDDINGS.items():
+            sims = F.cosine_similarity(msg_emb, embs)
+            max_sim = sims.max().item()
+            if max_sim > best_score:
+                best_score = max_sim
+                best_intent = intent
+                
+        if best_score > 0.65:
+            return best_intent
+        return None
+    except Exception as e:
+        print(f"Semantic routing error: {e}")
+        return None
 def local_nlp_parse(message):
     normalized = preprocess_text(message)
     crop = extract_crop_name(message)
     entities = {'crop': crop, 'message': message, 'normalized': normalized}
 
-    if any(word in normalized for word in ['weather', 'rain', 'temperature', 'humidity', 'forecast', 'sunny']):
-        intent = 'weather'
-    elif any(word in normalized for word in ['grow', 'sow', 'plant', 'cultivate', 'care', 'harvest', 'season']):
-        intent = 'cultivation'
-    elif any(word in normalized for word in ['disease', 'symptom', 'pest', 'wilt', 'yellow', 'spot', 'blight', 'mildew', 'rust']):
-        intent = 'diagnosis'
-    elif any(word in normalized for word in ['prescription', 'dose', 'pesticide', 'fertilizer', 'chemical', 'spray']):
-        intent = 'prescription'
-    elif any(word in normalized for word in ['how much water', 'water', 'irrigation', 'watering']):
-        intent = 'snippet_water'
-    elif any(word in normalized for word in ['soil', 'dirt', 'ground']):
-        intent = 'snippet_soil'
-    elif any(word in normalized for word in ['climate', 'temperature', 'sunlight', 'sun']):
-        intent = 'snippet_climate'
-    elif any(word in normalized for word in ['season', 'when to plant', 'month']):
-        intent = 'snippet_season'
-    elif any(word in normalized for word in ['tell me about', 'information', 'what is', 'details on', 'know about']):
-        intent = 'info'
-    elif any(word in normalized for word in ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening', 'greetings']):
-        intent = 'greeting'
-    elif any(word in normalized for word in ['thank', 'thanks', 'thank you']):
-        intent = 'gratitude'
-    else:
-        intent = 'cultivation' if crop else 'fallback'
+    # 1. Semantic Routing (The "Self-Thinking" capability)
+    intent = get_semantic_intent(message)
+    
+    # 2. Fallback to keyword matching if semantic router is unavailable or confidence is low
+    if not intent:
+        if any(word in normalized for word in ['suggest a crop', 'what should i plant', 'profitable crop', 'suggest crop', 'which crop']):
+            intent = 'suggest_crop'
+        elif any(word in normalized for word in ['not growing', 'failing', 'why is it dying', 'wont grow']):
+            intent = 'troubleshoot'
+        elif any(word in normalized for word in ['weather', 'rain', 'temperature', 'humidity', 'forecast', 'sunny']):
+            intent = 'weather'
+        elif any(word in normalized for word in ['grow', 'sow', 'plant', 'cultivate', 'care', 'harvest', 'season']):
+            intent = 'cultivation'
+        elif any(word in normalized for word in ['disease', 'symptom', 'pest', 'wilt', 'yellow', 'spot', 'blight', 'mildew', 'rust']):
+            intent = 'diagnosis'
+        elif any(word in normalized for word in ['prescription', 'dose', 'pesticide', 'fertilizer', 'chemical', 'spray']):
+            intent = 'prescription'
+        elif any(word in normalized for word in ['how much water', 'water', 'irrigation', 'watering']):
+            intent = 'snippet_water'
+        elif any(word in normalized for word in ['soil', 'dirt', 'ground']):
+            intent = 'snippet_soil'
+        elif any(word in normalized for word in ['climate', 'temperature', 'sunlight', 'sun']):
+            intent = 'snippet_climate'
+        elif any(word in normalized for word in ['season', 'when to plant', 'month']):
+            intent = 'snippet_season'
+        elif any(word in normalized for word in ['tell me about', 'information', 'what is', 'details on', 'know about']):
+            intent = 'info'
+        elif any(word in normalized for word in ['hi', 'hello', 'hey', 'namaste', 'good morning', 'good evening', 'greetings']):
+            intent = 'greeting'
+        elif any(word in normalized for word in ['thank', 'thanks', 'thank you']):
+            intent = 'gratitude'
+        else:
+            intent = 'cultivation' if crop else 'fallback'
 
     return intent, entities
 
@@ -322,6 +486,56 @@ def generate_local_text(prompt, max_new_tokens=80):
         print(f'Local LLM generation error: {e}')
         return ''
 
+
+VISION_MODEL_NAME = 'linka/vit-plant-disease'
+VISION_MODEL = None
+
+
+def load_vision_model():
+    global VISION_MODEL
+    if VISION_MODEL is not None:
+        return VISION_MODEL
+    if pipeline is None:
+        print('Transformers pipeline not available; vision model disabled.')
+        return None
+
+    try:
+        VISION_MODEL = pipeline('image-classification', model=VISION_MODEL_NAME, device=-1)
+    except Exception as e:
+        print(f'Vision model load error: {e}')
+        VISION_MODEL = None
+    return VISION_MODEL
+
+
+def analyze_plant_image(image_path):
+    model = load_vision_model()
+    if not model:
+        return "Offline image analysis is currently unavailable."
+    
+    try:
+        image = Image.open(image_path)
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+            
+        results = model(image)
+        if results and len(results) > 0:
+            top_prediction = results[0]
+            label = top_prediction['label']
+            score = top_prediction['score']
+            
+            # Format the label nicely
+            formatted_label = label.replace('_', ' ').replace('-', ' ').title()
+            
+            # Additional context mapping
+            if 'healthy' in formatted_label.lower():
+                response = f"I analyzed the image. The plant appears to be Healthy (Confidence: {score:.1%}). Keep up the good work!"
+            else:
+                response = f"I analyzed the image. The plant appears to be affected by {formatted_label} (Confidence: {score:.1%}). You can ask me how to treat this specific disease for a prescription."
+            return localize_to_indian_english(response)
+        return localize_to_indian_english("I couldn't identify any clear issues in the image.")
+    except Exception as e:
+        print(f"Image analysis error: {e}")
+        return localize_to_indian_english("An error occurred while analyzing the image.")
 
 def local_diagnosis_logic(message, crop):
     normalized = preprocess_text(message)
@@ -431,11 +645,32 @@ def generate_prescription(disease, confidence):
     return 'Confidence too low. Consult expert.'
 
 
-def get_weather(lat, lon):
-    return "Weather data unavailable (offline mode). Simulated: Temp 25°C, Humidity 60%"
+def get_weather(pincode, lat=None, lon=None):
+    if not is_online():
+        return "Weather data unavailable (offline mode). Simulated: Temp 25°C, Humidity 60%"
+        
+    api_key = "1712ad72cc89f8a8594cae59c6bbda04"
+    if lat and lon:
+        url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+    else:
+        url = f"http://api.openweathermap.org/data/2.5/weather?zip={pincode},IN&appid={api_key}&units=metric"
+    
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            temp = data['main']['temp']
+            humidity = data['main']['humidity']
+            desc = data['weather'][0]['description']
+            city_name = data.get('name', 'your area')
+            return f"{temp}°C with {humidity}% humidity and {desc} in {city_name}"
+    except Exception as e:
+        print(f"Weather API Error: {e}")
+        
+    return "Weather data unavailable (API error). Simulated: Temp 25°C, Humidity 60%"
 
 
-def local_llm_generate(intent, entities, language, message):
+def local_llm_generate(intent, entities, language, message, pincode='500001', lat=None, lon=None):
     crop = entities.get('crop')
     normalized = entities.get('normalized', '')
 
@@ -454,7 +689,33 @@ def local_llm_generate(intent, entities, language, message):
         }.get(language, 'You are welcome! Ask me anything about crop care or farming.')
 
     if intent == 'weather':
-        return get_weather(17.3850, 78.4867)
+        return get_weather(pincode, lat, lon)
+
+    if intent == 'troubleshoot':
+        return ("I understand your crop is not growing as expected. Even if the weather is perfect and you "
+                "are using the correct soil type (like black soil or loam), your plant will not grow if the Soil pH "
+                "is incorrect! Incorrect pH prevents the roots from absorbing nutrients. Please test your soil pH immediately "
+                "and share it with me so I can give further advice.")
+
+    if intent == 'suggest_crop':
+        ph_match = re.search(r'ph(?: is)?\s*([0-9.]+)', normalized)
+        if not ph_match:
+            return ("I can suggest the most profitable crop for your exact location! "
+                    "But first, I need to know your soil's acidity. Could you tell me your soil pH value? (e.g., 'My soil pH is 6.5')")
+        
+        ph = float(ph_match.group(1))
+        weather_info = get_weather(pincode, lat, lon)
+        
+        if 5.5 <= ph <= 7.0:
+            suggestion = "Rice or Maize"
+        elif 6.0 <= ph <= 7.5:
+            suggestion = "Cotton or Tomato"
+        else:
+            suggestion = "Sugarcane or Banana"
+            
+        return (f"Based on your local weather ({weather_info}) and your soil pH of {ph}, "
+                f"the most profitable crops for you to plant right now are {suggestion}. "
+                "Testing soil pH regularly is highly recommended for maximum yield and profit!")
 
     if intent == 'info':
         if crop:
@@ -477,7 +738,7 @@ def local_llm_generate(intent, entities, language, message):
             # Remote search fallback
             for item in CACHED_PLANTS_DATA:
                 cname = item.get("crop_name", "")
-                if crop.lower() in cname.lower():
+                if re.search(r'\b' + re.escape(crop.lower()) + r'\b', cname.lower()):
                     return (
                         f"{cname} is a recognized plant in our system, "
                         "but I'm still gathering its detailed climate and soil preferences. "
@@ -535,22 +796,27 @@ def local_llm_generate(intent, entities, language, message):
     return 'I am AgriVoice AI. Ask me about crop care, disease symptoms, or local farming advice.'
 
 
-def chat_response(message, language='English'):
+def chat_response(message, language='English', pincode='500001', lat=None, lon=None):
     try:
         intent, entities = local_nlp_parse(message)
-        return local_llm_generate(intent, entities, language, message)
+        response = local_llm_generate(intent, entities, language, message, pincode, lat, lon)
+        return localize_to_indian_english(response)
     except Exception as e:
         print(f"Local NLP Error: {e}")
-        return 'I am AgriVoice AI. Ask me about crop care, disease symptoms, or local farming advice.'
+        return localize_to_indian_english('I am AgriVoice AI. Ask me about crop care, disease symptoms, or local farming advice.')
 
 
 def init_db():
     conn = sqlite3.connect('agrivoice.db')
     c = conn.cursor()
+    # Drop the old users table to migrate schema
+    c.execute('DROP TABLE IF EXISTS users')
+    
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     phone TEXT PRIMARY KEY,
                     pin_hash TEXT,
-                    language TEXT DEFAULT 'English'
+                    language TEXT DEFAULT 'English',
+                    pincode TEXT
                 )''')
     c.execute('''CREATE TABLE IF NOT EXISTS prescriptions (
                     id INTEGER PRIMARY KEY,
@@ -576,8 +842,8 @@ def init_db():
                     updated_at TEXT
                 )''')
 
-    c.execute('INSERT OR IGNORE INTO users VALUES (?, ?, ?)', (
-        '9999999999', hashlib.sha256('0000'.encode()).hexdigest(), 'English'
+    c.execute('INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?)', (
+        '9999999999', hashlib.sha256('0000'.encode()).hexdigest(), 'English', '500001'
     ))
 
     conn.commit()
@@ -600,10 +866,11 @@ def login():
     if request.method == 'POST':
         phone = request.form['phone']
         pin = request.form['pin']
-        lang = login_user(phone, pin)
+        lang, pincode = login_user(phone, pin)
         if lang:
             session['user'] = phone
             session['language'] = lang
+            session['pincode'] = pincode
             session['chat_history'] = []
             sync_user_to_cloud(phone, lang)
             return redirect(url_for('chat'))
@@ -613,12 +880,12 @@ def login():
     return render_template('login.html', system_prompt=SYSTEM_PROMPT)
 
 
-def register_user(phone, pin, language='English'):
+def register_user(phone, pin, language='English', pincode='500001'):
     pin_hash = hashlib.sha256(pin.encode()).hexdigest()
     conn = sqlite3.connect('agrivoice.db')
     c = conn.cursor()
     try:
-        c.execute('INSERT INTO users VALUES (?, ?, ?)', (phone, pin_hash, language))
+        c.execute('INSERT INTO users VALUES (?, ?, ?, ?)', (phone, pin_hash, language, pincode))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -631,13 +898,13 @@ def login_user(phone, pin):
     pin_hash = hashlib.sha256(pin.encode()).hexdigest()
     conn = sqlite3.connect('agrivoice.db')
     c = conn.cursor()
-    c.execute('SELECT language FROM users WHERE phone=? AND pin_hash=?', (phone, pin_hash))
+    c.execute('SELECT language, pincode FROM users WHERE phone=? AND pin_hash=?', (phone, pin_hash))
     result = c.fetchone()
     conn.close()
     if result:
-        return result[0]
+        return result[0], result[1]
     increment_error_counter('invalid_credentials', 'Invalid credentials for phone: ' + phone)
-    return None
+    return None, None
 
 
 @app.route('/chat', methods=['GET', 'POST'])
@@ -647,20 +914,38 @@ def chat():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
+        image_analysis_response = ""
         if 'image_files' in request.files and request.files.getlist('image_files'):
             image_files = request.files.getlist('image_files')
             saved_names = process_uploaded_images(image_files, session['user'])
             if saved_names:
                 add_chat_message('image', saved_names)
-                add_chat_message('bot', f'Received {len(saved_names)} image(s). Image analysis is not enabled yet.')
+                
+                # Perform analysis
+                analyses = []
+                for name in saved_names:
+                    image_path = UPLOAD_FOLDER / name
+                    result = analyze_plant_image(str(image_path))
+                    analyses.append(result)
+                
+                image_analysis_response = " ".join(analyses)
+                add_chat_message('bot', image_analysis_response)
             else:
                 add_chat_message('bot', 'Uploaded files were not valid image types.')
 
         if 'chat_message' in request.form and request.form['chat_message'].strip():
             user_message = request.form['chat_message'].strip()
             language = session.get('language', 'English')
+            pincode = session.get('pincode', '500001')
             add_chat_message('user', user_message)
-            response = chat_response(user_message, language)
+            
+            # Combine image analysis context if present
+            if image_analysis_response:
+                user_message_with_context = f"Image Context: {image_analysis_response}. User: {user_message}"
+                response = chat_response(user_message_with_context, language, pincode)
+            else:
+                response = chat_response(user_message, language, pincode)
+                
             add_chat_message('bot', response)
 
         if session.get('chat_history'):
@@ -669,6 +954,76 @@ def chat():
         return redirect(url_for('chat'))
 
     return render_template('chat.html')
+
+
+@app.route('/api/chat', methods=['POST'])
+@route_error_handler
+def api_chat():
+    if not session.get('user'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    user_message = ""
+    image_analysis_response = ""
+    lat = None
+    lon = None
+    
+    # Handle both JSON and FormData
+    if request.is_json:
+        data = request.get_json()
+        user_message = data.get('message', '').strip()
+        lat = data.get('lat')
+        lon = data.get('lon')
+    else:
+        user_message = request.form.get('chat_message', '').strip()
+        lat = request.form.get('lat')
+        lon = request.form.get('lon')
+        if 'image_files' in request.files and request.files.getlist('image_files'):
+            image_files = request.files.getlist('image_files')
+            saved_names = process_uploaded_images(image_files, session['user'])
+            if saved_names:
+                add_chat_message('image', saved_names)
+                
+                # Perform analysis
+                analyses = []
+                for name in saved_names:
+                    image_path = UPLOAD_FOLDER / name
+                    result = analyze_plant_image(str(image_path))
+                    analyses.append(result)
+                
+                image_analysis_response = " ".join(analyses)
+
+    if not user_message and not image_analysis_response:
+        return jsonify({'error': 'No message provided'}), 400
+        
+    language = session.get('language', 'English')
+    pincode = session.get('pincode', '500001')
+    
+    if user_message:
+        add_chat_message('user', user_message)
+        if image_analysis_response:
+            # First send the image analysis so they see it, then send the response to their text
+            add_chat_message('bot', image_analysis_response)
+            
+            user_message_with_context = f"Image Context: {image_analysis_response}. User: {user_message}"
+            response = chat_response(user_message_with_context, language, pincode, lat, lon)
+            add_chat_message('bot', response)
+            
+            # Return combined response for UI
+            final_response = f"{image_analysis_response}\n\n{response}"
+        else:
+            final_response = chat_response(user_message, language, pincode, lat, lon)
+            add_chat_message('bot', final_response)
+    else:
+        add_chat_message('bot', image_analysis_response)
+        final_response = image_analysis_response
+    
+    if session.get('chat_history'):
+        sync_chat_history_to_cloud(session['user'], session['chat_history'])
+        
+    return jsonify({
+        'response': final_response,
+        'role': 'bot'
+    })
 
 
 @app.route('/speak', methods=['POST'])
@@ -689,6 +1044,7 @@ def register():
         phone = request.form['phone']
         pin = request.form['pin']
         confirm_pin = request.form.get('confirm_pin', '')
+        pincode = request.form.get('pincode', '500001').strip()
         language = request.form.get('language', 'English')
 
         if pin != confirm_pin:
@@ -699,7 +1055,7 @@ def register():
             flash('PIN must be at least 4 characters long.')
             return render_template('register.html')
 
-        if register_user(phone, pin, language):
+        if register_user(phone, pin, language, pincode):
             flash('Registration successful. Please log in.')
             return redirect(url_for('login'))
 

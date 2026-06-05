@@ -1,6 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 0;
+}
+.typing-indicator span {
+    width: 6px;
+    height: 6px;
+    background-color: var(--text-color, #666);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out both;
+}
+.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+@keyframes typing {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+.chat-row.user .chat-bubble {
+    animation: slideInRight 0.3s ease-out;
+}
+.chat-row.bot .chat-bubble {
+    animation: slideInLeft 0.3s ease-out;
+}
+@keyframes slideInRight {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInLeft {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+</style>
+
 <div class="chat-container">
     <div class="chat-header">
         <div class="chat-header-info">
@@ -46,7 +82,7 @@
     </div>
 
     <div class="chat-input-area">
-        <form method="post" enctype="multipart/form-data" class="chat-form" id="chatForm">
+        <form class="chat-form" id="chatForm">
             <div class="chat-input-wrapper">
                 <input type="text" id="chat_message" name="chat_message"
                     placeholder="Type your farming question... (e.g. 'How much water for ginger?')" autocomplete="off">
@@ -71,6 +107,7 @@
             <div class="voice-controls">
                 <button type="button" id="voice-btn" class="voice-btn" title="Speech to Text">🎤 Speak</button>
                 <button type="button" id="speak-btn" class="voice-btn" title="Read Aloud">🔊 Read Aloud</button>
+                <button type="button" id="location-btn" class="voice-btn" title="Update Location">📍 Update Location</button>
             </div>
         </form>
     </div>
@@ -104,5 +141,395 @@
         }
     }
     toggleSwitch.addEventListener('change', switchTheme, false);
+
+    let currentLat = null;
+    let currentLon = null;
+
+    // Location Button Logic
+    const locationBtn = document.getElementById('location-btn');
+    if (locationBtn) {
+        locationBtn.addEventListener('click', () => {
+            locationBtn.textContent = '📍 Locating...';
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        currentLat = position.coords.latitude;
+                        currentLon = position.coords.longitude;
+                        locationBtn.textContent = '📍 Location Updated';
+                        locationBtn.style.color = '#4CAF50';
+                        setTimeout(() => { locationBtn.textContent = '📍 Update Location'; locationBtn.style.color = ''; }, 3000);
+                    },
+                    (error) => {
+                        locationBtn.textContent = '📍 Permission Denied';
+                        setTimeout(() => { locationBtn.textContent = '📍 Update Location'; }, 3000);
+                        console.error('Error getting location', error);
+                    }
+                );
+            } else {
+                locationBtn.textContent = '📍 Not Supported';
+            }
+        });
+    }
+
+    // AJAX Chat Logic
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('chat_message');
+    const fileInput = document.getElementById('image_files');
+
+    // Handle image paste from clipboard
+    messageInput.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        const files = [];
+        for (let item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                files.push(item.getAsFile());
+            }
+        }
+
+        if (files.length > 0) {
+            e.preventDefault();
+            
+            // Create a DataTransfer object to set the files
+            const dataTransfer = new DataTransfer();
+            files.forEach(file => dataTransfer.items.add(file));
+            fileInput.files = dataTransfer.files;
+            
+            // Show preview of pasted images
+            const previewContainer = document.getElementById('image-preview-container') || createPreviewContainer();
+            previewContainer.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const previewCard = document.createElement('div');
+                    previewCard.className = 'pasted-image-preview';
+                    previewCard.innerHTML = `
+                        <img src="${event.target.result}" alt="Pasted image ${index + 1}">
+                        <button type="button" class="remove-image-btn" data-index="${index}" title="Remove">×</button>
+                    `;
+                    previewContainer.appendChild(previewCard);
+                    
+                    // Add remove button listener
+                    previewCard.querySelector('.remove-image-btn').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        removeImageFromPreview(index);
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+            
+            // Indicate that images are pasted
+            messageInput.placeholder = `Type your message... (${files.length} image${files.length > 1 ? 's' : ''} pasted)`;
+        }
+    });
+
+    function createPreviewContainer() {
+        const container = document.createElement('div');
+        container.id = 'image-preview-container';
+        container.className = 'image-preview-container';
+        messageInput.parentElement.insertBefore(container, messageInput.nextSibling);
+        return container;
+    }
+
+    function removeImageFromPreview(indexToRemove) {
+        // Update fileInput.files by removing the selected file
+        const dataTransfer = new DataTransfer();
+        const currentFiles = fileInput.files;
+        
+        for (let i = 0; i < currentFiles.length; i++) {
+            if (i !== indexToRemove) {
+                dataTransfer.items.add(currentFiles[i]);
+            }
+        }
+        
+        fileInput.files = dataTransfer.files;
+        
+        // Update preview
+        const previewCards = document.querySelectorAll('.pasted-image-preview');
+        if (previewCards[indexToRemove]) {
+            previewCards[indexToRemove].remove();
+        }
+        
+        // Update placeholder
+        const remainingCount = fileInput.files.length;
+        if (remainingCount === 0) {
+            messageInput.placeholder = "Type your farming question... (e.g. 'How much water for ginger?')";
+        } else {
+            messageInput.placeholder = `Type your message... (${remainingCount} image${remainingCount > 1 ? 's' : ''} pasted)`;
+        }
+    }
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const messageText = messageInput.value.trim();
+        const files = fileInput.files;
+
+        if (!messageText && files.length === 0) return;
+
+        // Remove empty state if present
+        const emptyState = document.querySelector('.empty-chat-state');
+        if (emptyState) emptyState.remove();
+
+        // Add user message to UI
+        if (messageText) {
+            appendMessage('user', messageText);
+        }
+        if (files.length > 0) {
+            for (let i = 0; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    appendImage('user', e.target.result);
+                };
+                reader.readAsDataURL(files[i]);
+            }
+        }
+
+        // Clear input
+        messageInput.value = '';
+        
+        // Clear image preview container
+        const previewContainer = document.getElementById('image-preview-container');
+        if (previewContainer) {
+            previewContainer.remove();
+        }
+        messageInput.placeholder = "Type your farming question... (e.g. 'How much water for ginger?')";
+        
+        // Show typing indicator
+        const typingIndicatorId = showTypingIndicator();
+        
+        try {
+            let response;
+            if (files.length > 0) {
+                const formData = new FormData(chatForm);
+                if (currentLat && currentLon) {
+                    formData.append('lat', currentLat);
+                    formData.append('lon', currentLon);
+                }
+                response = await fetch('/api/chat', {
+                    method: 'POST',
+                    body: formData
+                });
+                fileInput.value = ''; // clear files
+            } else {
+                const payload = { message: messageText };
+                if (currentLat && currentLon) {
+                    payload.lat = currentLat;
+                    payload.lon = currentLon;
+                }
+                response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+            }
+            
+            const data = await response.json();
+            
+            // Remove typing indicator
+            removeTypingIndicator(typingIndicatorId);
+            
+            if (data.response) {
+                appendMessage('bot', data.response, true);
+            }
+            
+        } catch (error) {
+            removeTypingIndicator(typingIndicatorId);
+            appendMessage('bot', 'Sorry, an error occurred. Please try again.');
+        }
+    });
+
+    function appendMessage(role, text, useTypewriter = false) {
+        const row = document.createElement('div');
+        row.className = `chat-row ${role}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        
+        const roleSpan = document.createElement('span');
+        roleSpan.className = 'chat-role';
+        roleSpan.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'chat-text';
+        
+        bubble.appendChild(roleSpan);
+        bubble.appendChild(textSpan);
+        row.appendChild(bubble);
+        chatBox.appendChild(row);
+        
+        if (useTypewriter && role === 'bot') {
+            typeWriter(textSpan, text, 0);
+        } else {
+            textSpan.textContent = text;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
+
+    function appendImage(role, imageUrl) {
+        const row = document.createElement('div');
+        row.className = `chat-row ${role}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        
+        const roleSpan = document.createElement('span');
+        roleSpan.className = 'chat-role';
+        roleSpan.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        
+        const imgContainer = document.createElement('div');
+        imgContainer.className = 'chat-images';
+        
+        const imgCard = document.createElement('div');
+        imgCard.className = 'chat-image-card';
+        
+        const img = document.createElement('img');
+        img.src = imageUrl;
+        img.alt = "Uploaded image";
+        
+        imgCard.appendChild(img);
+        imgContainer.appendChild(imgCard);
+        
+        bubble.appendChild(roleSpan);
+        bubble.appendChild(imgContainer);
+        row.appendChild(bubble);
+        chatBox.appendChild(row);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function typeWriter(element, text, index) {
+        if (index < text.length) {
+            element.textContent += text.charAt(index);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            setTimeout(() => typeWriter(element, text, index + 1), 15);
+        }
+    }
+
+    function showTypingIndicator() {
+        const id = 'typing-' + Date.now();
+        const row = document.createElement('div');
+        row.className = `chat-row bot`;
+        row.id = id;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble typing-bubble';
+        bubble.innerHTML = `
+            <span class="chat-role">Bot</span>
+            <div class="typing-indicator">
+                <span></span><span></span><span></span>
+            </div>
+        `;
+        
+        row.appendChild(bubble);
+        chatBox.appendChild(row);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return id;
+    }
+
+    function removeTypingIndicator(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+
+    // Voice Input Logic
+    const voiceBtn = document.getElementById('voice-btn');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (voiceBtn) {
+        voiceBtn.addEventListener('click', function() {
+            if (!SpeechRecognition) {
+                appendMessage('bot', 'Microphone access is not supported in this browser. This usually happens if you are not using HTTPS or localhost. Please use a secure connection or type your message.');
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            
+            let language = 'en-US';
+            const userLanguage = document.documentElement.lang || navigator.language || 'en-US';
+            if (userLanguage.includes('hi') || userLanguage.includes('hin')) {
+                language = 'hi-IN';
+            } else if (userLanguage.includes('te') || userLanguage.includes('tel')) {
+                language = 'te-IN';
+            } else {
+                language = userLanguage.startsWith('en') ? 'en-US' : userLanguage;
+            }
+            
+            recognition.lang = language;
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            voiceBtn.textContent = '🎤 Listening...';
+            voiceBtn.disabled = true;
+
+            recognition.onresult = function(event) {
+                let transcript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    if (result && result[0] && result[0].transcript) {
+                        transcript += result[0].transcript;
+                    }
+                }
+                transcript = (transcript || '').trim();
+                
+                if (transcript) {
+                    messageInput.value = transcript;
+                    chatForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                } else {
+                    appendMessage('bot', 'No speech detected. Please try again.');
+                }
+                voiceBtn.textContent = '🎤 Speak';
+                voiceBtn.disabled = false;
+            };
+
+            recognition.onerror = function(event) {
+                let errorMsg = event.error;
+                if (event.error === 'no-speech') {
+                    errorMsg = 'No speech detected. Please speak clearly.';
+                } else if (event.error === 'network') {
+                    errorMsg = 'Network error. Please check your connection.';
+                } else if (event.error === 'not-allowed') {
+                    errorMsg = 'Microphone access denied. Please allow permissions in your browser.';
+                }
+                appendMessage('bot', 'Microphone error: ' + errorMsg);
+                voiceBtn.textContent = '🎤 Speak';
+                voiceBtn.disabled = false;
+            };
+
+            recognition.onend = function() {
+                voiceBtn.textContent = '🎤 Speak';
+                voiceBtn.disabled = false;
+            };
+
+            recognition.start();
+        });
+    }
+
+    // Text to Speech Logic
+    const speakBtn = document.getElementById('speak-btn');
+    if (speakBtn) {
+        speakBtn.addEventListener('click', function() {
+            const botMessages = document.querySelectorAll('.chat-row.bot .chat-text');
+            const lastBotMessage = botMessages[botMessages.length - 1];
+            const text = lastBotMessage ? lastBotMessage.textContent.trim() : '';
+            
+            if (!text) {
+                appendMessage('bot', 'No message to read aloud.');
+                return;
+            }
+
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = navigator.language || 'en-US';
+                window.speechSynthesis.speak(utterance);
+            } else {
+                appendMessage('bot', 'Text-to-speech is not supported in your browser.');
+            }
+        });
+    }
 </script>
 {% endblock %}
